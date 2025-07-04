@@ -1,0 +1,16 @@
+@layer reset, theme, base;
+
+@import "reset.css" layer(reset);
+@import "theme.css" layer(theme);
+
+@layer base {
+  body {
+    background: var(--color-bg-base);
+    color: var(--color-fg-base);
+    min-height: 100vh;
+  }
+
+  #app {
+    height: 100%;
+  }
+}
