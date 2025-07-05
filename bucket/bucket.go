@@ -1,6 +1,9 @@
 package bucket
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -44,15 +47,20 @@ func (b bucket) GetFiles() ([]BucketFile, error) {
 		return nil, fmt.Errorf("get files: %w", err)
 	}
 
-	files := make([]BucketFile, len(result.Versions))
-	for i, version := range result.Versions {
-		files[i] = BucketFile{
+	files := []BucketFile{}
+	for _, version := range result.Versions {
+		// Ignore checksum files
+		if strings.HasSuffix(version.Key, ".sha256") {
+			continue
+		}
+
+		files = append(files, BucketFile{
 			Name:         strings.TrimSuffix(version.Key, ".age"),
 			IsLatest:     version.IsLatest,
 			Version:      version.VersionId,
-			LastModified: "??",
+			LastModified: version.LastModified,
 			Size:         formatBytes(version.Size),
-		}
+		})
 	}
 
 	return files, nil
@@ -98,7 +106,21 @@ func (b bucket) UploadFile(diskPath string, targetPath string) error {
 		return fmt.Errorf("file stat: %w", err)
 	}
 
-	// TODO - checksum files
+	// get shasum
+	hash := sha256.New()
+	if _, err := io.Copy(hash, archive); err != nil {
+		return err
+	}
+	if _, err := archive.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	sha256Sum := []byte(hex.EncodeToString(hash.Sum(nil)))
+
+	err = b.client.PutObject(cleanKeyName(targetPath+".age.sha256"), bytes.NewReader(sha256Sum), int64(len(sha256Sum)), nil)
+	if err != nil {
+		return fmt.Errorf("upload to s3: %w", err)
+	}
+
 	err = b.client.PutObject(cleanKeyName(targetPath+".age"), archive, stat.Size(), nil)
 	if err != nil {
 		return fmt.Errorf("upload to s3: %w", err)

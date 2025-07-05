@@ -5,14 +5,21 @@
   type Props = {
     children: Snippet;
     variant?: "primary" | "secondary";
+    icon?: boolean;
   } & HTMLButtonAttributes;
 
-  const { children, variant = "primary", ...rest }: Props = $props();
+  const {
+    children,
+    icon = false,
+    variant = "primary",
+    ...rest
+  }: Props = $props();
 </script>
 
 <button
   {...rest}
   part="button"
+  class:icon
   class:primary={variant === "primary"}
   class:secondary={variant === "secondary"}>{@render children()}</button
 >
@@ -27,6 +34,10 @@
     padding-block: calc(var(--spacing) * 0.75);
     padding-inline: calc(var(--spacing) * 3);
     border-radius: var(--radius-md);
+
+    &.icon {
+      padding: calc(var(--spacing) * 2);
+    }
 
     &:not(:disabled) {
       &.primary {

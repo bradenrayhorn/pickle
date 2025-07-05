@@ -28,7 +28,7 @@
   --color-alpha-800: rgba(255, 255, 255, 0.8);
   --color-alpha-900: rgba(255, 255, 255, 0.92);
 
-  --color-bg-primary: #337415;
+  --color-bg-primary: oklch(0.4972 0.1416 138.12);
   --color-bg-primary-hover: #3f7b23;
   --color-fg-primary: #f4f4f5;
 
@@ -36,6 +36,7 @@
   --color-bg-secondary-hover: var(--color-alpha-200);
   --color-fg-secondary: #e8e8e8;
 
+  --color-bg-primary-subtle: oklch(0.7272 0.1416 138.12 / 15%);
   --color-bg-error: #8e1b1b;
   --color-fg-error: #f4f4f5;
 

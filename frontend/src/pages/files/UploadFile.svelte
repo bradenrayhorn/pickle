@@ -3,6 +3,7 @@
   import TextControl from "$lib/components/form/TextControl.svelte";
   import { getErrorQueue } from "$lib/error.svelte";
   import { SelectFile, UploadFile } from "@wails/main/App";
+  import IconUpload from "~icons/mdi/FileUploadOutline";
 
   let { onRefresh }: { onRefresh: () => void } = $props();
 
@@ -13,6 +14,7 @@
 </script>
 
 <Button
+  icon
   onclick={() => {
     SelectFile()
       .then((path) => {
@@ -22,8 +24,13 @@
         pendingFileName = fileName;
       })
       .catch(errorQueue.addError);
-  }}>Upload file</Button
+  }}
 >
+  <div class="upload-button">
+    <div>Upload</div>
+    <IconUpload font-size="var(--text-lg)" />
+  </div>
+</Button>
 
 {#if pendingFile}
   <dialog open>
@@ -46,4 +53,9 @@
 {/if}
 
 <style>
+  .upload-button {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 1);
+  }
 </style>
