@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"pickle/connection"
 	"time"
 
+	"filippo.io/age"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -21,15 +23,32 @@ func NewApp() *App {
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
+	runtime.WindowSetMinSize(ctx, 640, 640)
 	a.ctx = ctx
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
+// Connection info
+func (a *App) GenerateAgeKey() (string, error) {
+	key, err := age.GenerateX25519Identity()
+	if err != nil {
+		return "", fmt.Errorf("generate key: %w", err)
+	}
+
+	return key.String(), nil
 }
 
-// Choose the file
+func (a *App) CreateConnectionString(config connection.Config) (string, error) {
+	return connection.ToString(config)
+}
+
+// File management
+func (a *App) InitializeConnection(connectionString string) error {
+	conn, err := connection.FromString(connectionString)
+	if err != nil {
+		return err
+	}
+}
+
 func (a *App) ArchiveFile() error {
 	time.Sleep(time.Second * 10)
 

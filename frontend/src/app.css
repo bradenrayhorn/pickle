@@ -8,6 +8,9 @@
     background: var(--color-bg-base);
     color: var(--color-fg-base);
     min-height: 100vh;
+
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
   }
 
   #app {

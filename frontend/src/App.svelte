@@ -1,18 +1,32 @@
 <script lang="ts">
-  import { ArchiveFile } from "@wails/App";
+  import { initErrorQueue } from "$lib/error.svelte";
+  import ErrorQueue from "$lib/ErrorQueue.svelte";
+  import ConnectPage from "./pages/ConnectPage.svelte";
+  import CreateCredentialsPage from "./pages/CreateCredentialsPage.svelte";
+  import FilesPage from "./pages/FilesPage.svelte";
 
-  let page: "connect" | "credentials" | "files" = "connect";
+  let page: "connect" | "credentials" | "files" = $state("connect");
+
+  initErrorQueue();
 </script>
 
-<main>
-  <button
-    onclick={() => {
-      ArchiveFile();
-    }}>Choose a file</button
-  >
+<ErrorQueue />
 
-  type in ME: <input />
-</main>
-
-<style>
-</style>
+{#if page === "connect"}
+  <ConnectPage
+    onCreateCredentials={() => {
+      page = "credentials";
+    }}
+    onConnected={() => {
+      page = "files";
+    }}
+  />
+{:else if page === "credentials"}
+  <CreateCredentialsPage
+    onBack={() => {
+      page = "connect";
+    }}
+  />
+{:else if page === "files"}
+  <FilesPage />
+{/if}

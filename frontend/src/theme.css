@@ -1,6 +1,9 @@
 :root {
+  /* Base */
   --spacing: 0.25rem;
+  --radius-md: 0.125rem;
 
+  /* Font size */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 1rem;
@@ -9,22 +12,32 @@
   --text-2xl: 1.375rem;
   --text-3xl: 1.5rem;
 
+  /* Font weight */
+  --font-semibold: 600;
   --font-bold: 700;
 
-  --size-lg: 16rem;
-  --size-xl: 26rem;
-  --size-2xl: 42rem;
+  /* Colors */
+  --color-alpha-50: rgba(255, 255, 255, 0.04);
+  --color-alpha-100: rgba(255, 255, 255, 0.06);
+  --color-alpha-200: rgba(255, 255, 255, 0.08);
+  --color-alpha-300: rgba(255, 255, 255, 0.16);
+  --color-alpha-400: rgba(255, 255, 255, 0.24);
+  --color-alpha-500: rgba(255, 255, 255, 0.36);
+  --color-alpha-600: rgba(255, 255, 255, 0.48);
+  --color-alpha-700: rgba(255, 255, 255, 0.64);
+  --color-alpha-800: rgba(255, 255, 255, 0.8);
+  --color-alpha-900: rgba(255, 255, 255, 0.92);
 
-  --color-alpha-50: rgba(0, 0, 0, 0.04);
-  --color-alpha-100: rgba(0, 0, 0, 0.06);
-  --color-alpha-200: rgba(0, 0, 0, 0.08);
-  --color-alpha-300: rgba(0, 0, 0, 0.16);
-  --color-alpha-400: rgba(0, 0, 0, 0.24);
-  --color-alpha-500: rgba(0, 0, 0, 0.36);
-  --color-alpha-600: rgba(0, 0, 0, 0.48);
-  --color-alpha-700: rgba(0, 0, 0, 0.64);
-  --color-alpha-800: rgba(0, 0, 0, 0.8);
-  --color-alpha-900: rgba(0, 0, 0, 0.92);
+  --color-bg-primary: #337415;
+  --color-bg-primary-hover: #3f7b23;
+  --color-fg-primary: #f4f4f5;
+
+  --color-bg-secondary: var(--color-alpha-100);
+  --color-bg-secondary-hover: var(--color-alpha-200);
+  --color-fg-secondary: #e8e8e8;
+
+  --color-bg-error: #8e1b1b;
+  --color-fg-error: #f4f4f5;
 
   --color-bg-base: #18181b;
   --color-fg-base: #f4f4f5;

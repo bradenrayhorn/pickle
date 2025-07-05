@@ -19,14 +19,15 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "paths": {
-      "@wails/*": ["./wailsjs/go/main/*"]
+      "@wails/*": ["./wailsjs/go/*"],
+      "$lib/*": ["./src/lib/*"]
     }
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.js",
     "src/**/*.svelte",
-    "wailsjs/go/main/*.js",
-    "wailsjs/go/main/*.ts"
+    "wailsjs/go/**/*.ts",
+    "wailsjs/go/**/*.js"
   ]
 }

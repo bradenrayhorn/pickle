@@ -11,7 +11,8 @@ export default defineConfig({
   plugins: [svelte()],
   resolve: {
     alias: {
-      "@wails": `${basepath}/wailsjs/go/main`,
+      "@wails": `${basepath}/wailsjs/go`,
+      $lib: `${basepath}/src/lib`,
     },
   },
 });
