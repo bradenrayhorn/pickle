@@ -13,7 +13,6 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, ret
 	reqURL := c.buildURL(key, nil)
 
 	_, err := withRetries(func() (struct{}, error) {
-		fmt.Println("trying to upload")
 		// always reset data reader at the start
 		if _, err := data.Seek(0, io.SeekStart); err != nil {
 			return struct{}{}, err
@@ -23,8 +22,6 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, ret
 		if err != nil {
 			return struct{}{}, err
 		}
-
-		fmt.Printf("uploading key: %s of byte %d\n", reqURL, dataLength)
 
 		req.Header.Set("Content-Type", "application/octet-stream")
 		req.ContentLength = dataLength
@@ -56,7 +53,7 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, ret
 		}
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
-			return struct{}{}, err
+			return struct{}{}, retriableError{err}
 		}
 		defer resp.Body.Close()
 

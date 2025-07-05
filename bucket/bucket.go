@@ -127,3 +127,26 @@ func (b bucket) UploadFile(diskPath string, targetPath string) error {
 	}
 	return nil
 }
+
+func (b bucket) DownloadFile(bucketKey string, bucketVersion string, diskPath string) error {
+	target, err := os.Create(diskPath)
+	defer func() { _ = target.Close() }()
+
+	reader, err := b.client.GetObject(bucketKey, bucketVersion)
+	defer func() { _ = reader.Close() }()
+	if err != nil {
+		return fmt.Errorf("get object %s: %w", bucketKey, err)
+	}
+
+	r, err := age.Decrypt(reader, b.key)
+	if err != nil {
+		return fmt.Errorf("decrypt %s: %w", bucketKey, err)
+	}
+
+	_, err = io.Copy(target, r)
+	if err != nil {
+		return fmt.Errorf("copy %s to %s: %w", bucketKey, diskPath, err)
+	}
+
+	return nil
+}

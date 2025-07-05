@@ -1,19 +1,18 @@
 <script lang="ts">
   import { getErrorQueue } from "$lib/error.svelte";
-  import { ListFiles } from "@wails/main/App";
-  import UploadFile from "./files/UploadFile.svelte";
-  import FilesHeader from "./files/FilesHeader.svelte";
-  import FilesList from "./files/FilesList.svelte";
+  import { DownloadFile, ListFiles } from "@wails/main/App";
   import type { bucket } from "@wails/models";
   import { buildFileList } from "./files/files";
+  import FilesHeader from "./files/FilesHeader.svelte";
+  import FilesList from "./files/FilesList.svelte";
 
   const errorQueue = getErrorQueue();
 
   let files = $state<Array<bucket.BucketFile>>([]);
-  let inDirectory = $state("/");
+  let path = $state("");
 
   const fileList = $derived.by(() => {
-    return buildFileList(inDirectory, files);
+    return buildFileList(path, files);
   });
 
   function refreshFiles() {
@@ -29,9 +28,9 @@
 
 <div>
   <FilesHeader
-    prefix={inDirectory}
-    onChangeDirectory={(dir) => {
-      inDirectory = `${dir}/`;
+    {path}
+    onOpenPath={(newPath) => {
+      path = newPath;
     }}
     onRefresh={refreshFiles}
   />
@@ -40,8 +39,11 @@
 <div>
   <FilesList
     {fileList}
-    onOpenDirectory={(dir) => {
-      inDirectory += `${dir}/`;
+    onOpenPath={(newPath) => {
+      path = newPath;
+    }}
+    onDownloadFile={(key, version) => {
+      DownloadFile(key, version).catch(errorQueue.addError);
     }}
   />
 </div>

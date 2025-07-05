@@ -2,40 +2,45 @@
   import type { FileList } from "./files";
   import IconDirectory from "~icons/mdi/folder";
   import IconFile from "~icons/mdi/file";
+  import IconFileMultiple from "~icons/mdi/file-multiple";
   import dayjs from "dayjs";
 
   let {
     fileList,
-    onOpenDirectory,
+    onOpenPath,
     onDownloadFile,
   }: {
     fileList: FileList;
-    onOpenDirectory: (dir: string) => void;
-    onDownloadFile: (key: string) => void;
+    onOpenPath: (path: string) => void;
+    onDownloadFile: (key: string, version: string) => void;
   } = $props();
 </script>
 
 <ul>
-  {#each fileList as file (file.key)}
+  {#each fileList as file (file.type === "file" ? file.path + file.versionID : file.path)}
     <li>
       <button
-        title={file.key}
+        title={file.displayName}
         onclick={() => {
-          if (file.type === "directory") {
-            onOpenDirectory(file.key);
+          if (file.type === "directory" || file.hasMultipleVersions) {
+            onOpenPath(file.path);
           } else if (file.type === "file") {
-            onDownloadFile(file.key);
+            onDownloadFile(file.path, file.versionID);
           }
         }}
       >
-        {#if file.type === "directory"}
-          <div class="icon"><IconDirectory font-size="var(--text-lg)" /></div>
-          <div class="name">{file.key}</div>
-          <div class="date">{dayjs(file.lastModified).format("lll")}</div>
-          <div class="size"></div>
-        {:else if file.type === "file"}
-          <div class="icon"><IconFile font-size="var(--text-lg)" /></div>
-          <div class="name">{file.key}</div>
+        <div class="icon">
+          {#if file.type === "directory"}
+            <IconDirectory font-size="var(--text-lg)" />
+          {:else if file.hasMultipleVersions}
+            <IconFileMultiple font-size="var(--text-lg)" />
+          {:else}
+            <IconFile font-size="var(--text-lg)" />
+          {/if}
+        </div>
+
+        <div class="name">{file.displayName}</div>
+        {#if file.type === "file"}
           <div class="date">{dayjs(file.lastModified).format("lll")}</div>
           <div class="size">{file.size}</div>
         {/if}

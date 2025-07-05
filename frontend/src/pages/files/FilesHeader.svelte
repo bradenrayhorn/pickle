@@ -4,16 +4,16 @@
   import IconRefresh from "~icons/mdi/Refresh";
 
   let {
-    prefix,
-    onChangeDirectory,
+    path,
+    onOpenPath,
     onRefresh,
   }: {
-    prefix: string;
-    onChangeDirectory: (dir: string) => void;
+    path: string;
+    onOpenPath: (path: string) => void;
     onRefresh: () => void;
   } = $props();
 
-  let parts = $derived(prefix.replace(/\/$/, "").split("/"));
+  let parts = $derived(path.length > 0 ? ["", ...path.split("/")] : [""]);
 </script>
 
 <nav>
@@ -23,17 +23,19 @@
         <button
           title={`${part}/`}
           onclick={() => {
-            onChangeDirectory(parts.slice(0, i + 1).join("/"));
-          }}>{`${part}/`}</button
+            onOpenPath(parts.slice(1, i + 1).join("/"));
+          }}
         >
+          {`${part}/`}
+        </button>
       {/each}
     </div>
   </div>
 
   <div class="actions">
-    <Button icon variant="secondary" onclick={onRefresh}
-      ><IconRefresh font-size="var(--text-lg)" /></Button
-    >
+    <Button icon variant="secondary" onclick={onRefresh}>
+      <IconRefresh font-size="var(--text-lg)" />
+    </Button>
     <UploadFile {onRefresh} />
   </div>
 </nav>

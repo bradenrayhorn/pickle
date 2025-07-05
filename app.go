@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"path"
+
 	"github.com/bradenrayhorn/pickle/bucket"
 	"github.com/bradenrayhorn/pickle/connection"
 	"github.com/bradenrayhorn/pickle/s3"
@@ -98,4 +100,26 @@ func (a *App) UploadFile(diskPath string, targetPath string) error {
 	}
 
 	return b.UploadFile(diskPath, targetPath)
+}
+
+func (a *App) DownloadFile(key, version string) error {
+	b, err := bucket.New(a.bucket)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("download " + key)
+	diskPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: path.Base(key),
+	})
+	if err != nil {
+		return fmt.Errorf("select path for save: %w", err)
+	}
+
+	err = b.DownloadFile(key+".age", version, diskPath)
+	if err != nil {
+		fmt.Println(err)
+		return fmt.Errorf("download file %s: %w", key, err)
+	}
+	return nil
 }
