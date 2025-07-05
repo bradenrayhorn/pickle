@@ -1,4 +1,4 @@
-module pickle
+module github.com/bradenrayhorn/pickle
 
 go 1.23
 

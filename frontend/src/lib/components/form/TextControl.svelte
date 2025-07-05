@@ -6,15 +6,22 @@
     label: string;
     value: string;
     autocomplete?: boolean;
+    inputProps?: Omit<HTMLInputAttributes, "value" | "autocomplete">;
   };
 
-  let { label, value = $bindable(""), autocomplete = true }: Props = $props();
+  let {
+    label,
+    value = $bindable(""),
+    autocomplete = true,
+    inputProps,
+  }: Props = $props();
 </script>
 
 <label>
   <span>{label}</span>
 
   <Input
+    {...inputProps}
     bind:value
     autocomplete={autocomplete ? "on" : "off"}
     autocorrect={autocomplete ? "on" : "off"}

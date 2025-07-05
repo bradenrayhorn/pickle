@@ -1,6 +1,8 @@
 <script lang="ts">
   import Button from "$lib/components/Button.svelte";
   import TextControl from "$lib/components/form/TextControl.svelte";
+  import { getErrorQueue } from "$lib/error.svelte";
+  import { InitializeConnection } from "@wails/main/App";
 
   type Props = {
     onConnected: () => void;
@@ -8,6 +10,10 @@
   };
 
   const { onConnected, onCreateCredentials }: Props = $props();
+
+  const errorQueue = getErrorQueue();
+
+  let credentials = $state("");
 </script>
 
 <div class="wrapper">
@@ -15,6 +21,7 @@
 
   <div class="form">
     <TextControl
+      bind:value={credentials}
       label="Connection credentials"
       inputProps={{
         type: "password",
@@ -24,7 +31,11 @@
 
     <Button
       onclick={() => {
-        onConnected();
+        InitializeConnection(credentials)
+          .then(() => {
+            onConnected();
+          })
+          .catch(errorQueue.addError);
       }}
     >
       Connect
