@@ -13,8 +13,12 @@
   --text-3xl: 1.5rem;
 
   /* Font weight */
+  --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
+
+  /* z-index */
+  --z-alert: 100;
 
   /* Colors */
   --color-alpha-50: rgba(255, 255, 255, 0.04);
@@ -37,8 +41,16 @@
   --color-fg-secondary: #e8e8e8;
 
   --color-bg-primary-subtle: oklch(0.7272 0.1416 138.12 / 15%);
+
   --color-bg-error: #8e1b1b;
   --color-fg-error: #f4f4f5;
+
+  --color-bg-elevated: oklch(0.2893 0.0059 285.89);
+  --color-fg-elevated: #f4f4f5;
+
+  --color-accent-error: oklch(0.5801 0.2174 26.17);
+  --color-accent-loading: oklch(0.5838 0.2072 259.81);
+  --color-accent-success: oklch(0.7309 0.2121 150.88);
 
   --color-bg-base: #18181b;
   --color-fg-base: #f4f4f5;

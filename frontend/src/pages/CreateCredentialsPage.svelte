@@ -1,13 +1,13 @@
 <script lang="ts">
   import Button from "$lib/components/Button.svelte";
   import TextControl from "$lib/components/form/TextControl.svelte";
-  import { getErrorQueue } from "$lib/error.svelte";
+  import { getErrorHandler } from "$lib/toast/toast";
   import { CreateConnectionString, GenerateAgeKey } from "@wails/main/App";
   import { connection } from "@wails/models";
 
   let { onBack }: { onBack: () => void } = $props();
 
-  const errorQueue = getErrorQueue();
+  const onError = getErrorHandler();
 
   const copyButtonAction = "Copy to clipboard";
   let copyButtonText = $state(copyButtonAction);
@@ -57,7 +57,7 @@
             copyButtonText = copyButtonAction;
           }, 2500);
         })
-        .catch(errorQueue.addError);
+        .catch(onError);
     }}
   >
     <TextControl label="Endpoint" bind:value={url} autocomplete={false} />
@@ -97,7 +97,7 @@
               .then((value) => {
                 ageKey = value;
               })
-              .catch(errorQueue.addError);
+              .catch(onError);
           }}>Generate</Button
         >
       </div>

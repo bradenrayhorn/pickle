@@ -49,8 +49,8 @@ func (b bucket) GetFiles() ([]BucketFile, error) {
 
 	files := []BucketFile{}
 	for _, version := range result.Versions {
-		// Ignore checksum files
-		if strings.HasSuffix(version.Key, ".sha256") {
+		// Ignore non-age files
+		if !strings.HasSuffix(version.Key, ".age") {
 			continue
 		}
 
@@ -133,7 +133,11 @@ func (b bucket) DownloadFile(bucketKey string, bucketVersion string, diskPath st
 	defer func() { _ = target.Close() }()
 
 	reader, err := b.client.GetObject(bucketKey, bucketVersion)
-	defer func() { _ = reader.Close() }()
+	defer func() {
+		if reader != nil {
+			_ = reader.Close()
+		}
+	}()
 	if err != nil {
 		return fmt.Errorf("get object %s: %w", bucketKey, err)
 	}

@@ -12,7 +12,7 @@
   }: {
     fileList: FileList;
     onOpenPath: (path: string) => void;
-    onDownloadFile: (key: string, version: string) => void;
+    onDownloadFile: (key: string, version: string, displayName: string) => void;
   } = $props();
 </script>
 
@@ -21,11 +21,12 @@
     <li>
       <button
         title={file.displayName}
+        class:isDirectory={file.type === "directory"}
         onclick={() => {
           if (file.type === "directory" || file.hasMultipleVersions) {
             onOpenPath(file.path);
           } else if (file.type === "file") {
-            onDownloadFile(file.path, file.versionID);
+            onDownloadFile(file.path, file.versionID, file.displayName);
           }
         }}
       >
@@ -81,6 +82,10 @@
       grid-template-columns: 1.5rem 1fr 10rem 7rem;
       align-items: center;
       gap: var(--spacing);
+
+      &.isDirectory {
+        grid-template-columns: 1.5rem 1fr;
+      }
 
       .name {
         text-align: left;

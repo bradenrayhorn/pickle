@@ -28,9 +28,12 @@ func (c *Client) GetObject(key string, versionId string) (io.ReadCloser, error) 
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			defer resp.Body.Close()
-			body, _ := io.ReadAll(resp.Body)
-			err := fmt.Errorf("GetObject failed with status: %s, response: %s", resp.Status, string(body))
+			defer func() { _ = resp.Body.Close() }()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil || body == nil {
+				body = []byte("<nil>")
+			}
+			err = fmt.Errorf("GetObject failed with status: %s, response: %q", resp.Status, string(body))
 
 			if resp.StatusCode >= 500 {
 				return nil, retriableError{err}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import Button from "$lib/components/Button.svelte";
   import TextControl from "$lib/components/form/TextControl.svelte";
-  import { getErrorQueue } from "$lib/error.svelte";
+  import { getErrorHandler } from "$lib/toast/toast";
   import { InitializeConnection } from "@wails/main/App";
 
   type Props = {
@@ -11,7 +11,7 @@
 
   const { onConnected, onCreateCredentials }: Props = $props();
 
-  const errorQueue = getErrorQueue();
+  const onError = getErrorHandler();
 
   let credentials = $state("");
 </script>
@@ -35,7 +35,7 @@
           .then(() => {
             onConnected();
           })
-          .catch(errorQueue.addError);
+          .catch(onError);
       }}
     >
       Connect

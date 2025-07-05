@@ -20,6 +20,7 @@
     "moduleDetection": "force",
     "paths": {
       "@wails/*": ["./wailsjs/go/*"],
+      "@wails-runtime/*": ["./wailsjs/runtime/*"],
       "$lib/*": ["./src/lib/*"]
     }
   },
@@ -27,7 +28,7 @@
     "src/**/*.ts",
     "src/**/*.js",
     "src/**/*.svelte",
-    "wailsjs/go/**/*.ts",
-    "wailsjs/go/**/*.js"
+    "wailsjs/**/*.ts",
+    "wailsjs/**/*.js"
   ]
 }

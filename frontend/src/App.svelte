@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { initErrorQueue } from "$lib/error.svelte";
-  import ErrorQueue from "$lib/ErrorQueue.svelte";
+  import { initToaster } from "$lib/toast/toast";
+  import Toaster from "$lib/toast/Toaster.svelte";
   import ConnectPage from "./pages/ConnectPage.svelte";
   import CreateCredentialsPage from "./pages/CreateCredentialsPage.svelte";
   import FilesPage from "./pages/FilesPage.svelte";
 
   let page: "connect" | "credentials" | "files" = $state("connect");
 
-  initErrorQueue();
+  initToaster();
 </script>
 
-<ErrorQueue />
+<Toaster />
 
 {#if page === "connect"}
   <ConnectPage

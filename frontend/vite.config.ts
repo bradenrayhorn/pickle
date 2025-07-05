@@ -13,6 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@wails": `${basepath}/wailsjs/go`,
+      "@wails-runtime": `${basepath}/wailsjs/runtime`,
       $lib: `${basepath}/src/lib`,
     },
   },

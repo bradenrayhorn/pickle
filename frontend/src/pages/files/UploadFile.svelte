@@ -1,13 +1,13 @@
 <script lang="ts">
   import Button from "$lib/components/Button.svelte";
   import TextControl from "$lib/components/form/TextControl.svelte";
-  import { getErrorQueue } from "$lib/error.svelte";
+  import { getErrorHandler } from "$lib/toast/toast";
   import { SelectFile, UploadFile } from "@wails/main/App";
   import IconUpload from "~icons/mdi/FileUploadOutline";
 
   let { onRefresh }: { onRefresh: () => void } = $props();
 
-  const errorQueue = getErrorQueue();
+  const onError = getErrorHandler();
 
   let pendingFile = $state("");
   let pendingFileName = $state("");
@@ -23,7 +23,7 @@
         const fileName = path.replace(/^.*[\\\/]/, "");
         pendingFileName = fileName;
       })
-      .catch(errorQueue.addError);
+      .catch(onError);
   }}
 >
   <div class="upload-button">
@@ -46,7 +46,7 @@
             pendingFileName = "";
             onRefresh();
           })
-          .catch(errorQueue.addError);
+          .catch(onError);
       }}>Upload my file</Button
     >
   </dialog>
