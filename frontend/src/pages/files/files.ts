@@ -17,6 +17,7 @@ type Directory = {
 };
 
 export type FileList = Array<File | Directory>;
+export type FileListItem = File | Directory;
 
 export function buildFileList(
   path: string,

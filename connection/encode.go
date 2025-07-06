@@ -14,7 +14,8 @@ type Config struct {
 	KeyID        string `json:"keyID"`
 	KeySecret    string `json:"keySecret"`
 
-	AgePrivateKey string `json:"ageKey"`
+	AgePrivateKey   string `json:"ageKey"`
+	ObjectLockHours int    `json:"objectLockHours"`
 }
 
 type configV1 struct {
@@ -25,7 +26,8 @@ type configV1 struct {
 	KeyID        string `json:"k"`
 	KeySecret    string `json:"ks"`
 
-	AgePrivateKey string `json:"a"`
+	AgePrivateKey   string `json:"a"`
+	ObjectLockHours int    `json:"l"`
 }
 
 type versionedConfig struct {

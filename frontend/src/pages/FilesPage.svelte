@@ -46,6 +46,9 @@
     ListFiles()
       .then((res) => {
         files = res;
+        if (path !== "" && !files.some((f) => f.name.startsWith(`${path}/`))) {
+          path = "";
+        }
       })
       .catch(onError);
   }
@@ -66,6 +69,7 @@
 <div>
   <FilesList
     {fileList}
+    onRefresh={refreshFiles}
     onOpenPath={(newPath) => {
       path = newPath;
     }}

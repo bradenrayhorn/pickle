@@ -9,18 +9,22 @@ import (
 	"time"
 )
 
-func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, retention *ObjectLockRetention) error {
+type PutObjectResponse struct {
+	VersionID string
+}
+
+func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, retention *ObjectLockRetention) (*PutObjectResponse, error) {
 	reqURL := c.buildURL(key, nil)
 
-	_, err := withRetries(func() (struct{}, error) {
+	return withRetries(func() (*PutObjectResponse, error) {
 		// always reset data reader at the start
 		if _, err := data.Seek(0, io.SeekStart); err != nil {
-			return struct{}{}, err
+			return nil, err
 		}
 
 		req, err := http.NewRequest(http.MethodPut, reqURL, data)
 		if err != nil {
-			return struct{}{}, err
+			return nil, err
 		}
 
 		req.Header.Set("Content-Type", "application/octet-stream")
@@ -38,22 +42,22 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, ret
 		// compute md5 hash
 		hash := md5.New()
 		if _, err := io.Copy(hash, data); err != nil {
-			return struct{}{}, err
+			return nil, err
 		}
 		hashSum := hash.Sum(nil)
 		if _, err := data.Seek(0, io.SeekStart); err != nil {
-			return struct{}{}, err
+			return nil, err
 		}
 
 		req.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(hashSum[:]))
 
 		// sign and send request
 		if err := c.signV4(req, data); err != nil {
-			return struct{}{}, err
+			return nil, err
 		}
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
-			return struct{}{}, retriableError{err}
+			return nil, retriableError{err}
 		}
 		defer resp.Body.Close()
 
@@ -62,14 +66,14 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, ret
 			err := fmt.Errorf("PutObject failed with status: %s, response: %s", resp.Status, string(body))
 
 			if resp.StatusCode >= 500 {
-				return struct{}{}, retriableError{err}
+				return nil, retriableError{err}
 			} else {
-				return struct{}{}, err
+				return nil, err
 			}
 		}
 
-		return struct{}{}, nil
+		return &PutObjectResponse{
+			VersionID: resp.Header.Get("x-amz-version-id"),
+		}, nil
 	})
-
-	return err
 }

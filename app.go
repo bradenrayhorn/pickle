@@ -67,7 +67,8 @@ func (a *App) InitializeConnection(connectionString string) error {
 			KeySecret:    conn.KeySecret,
 			StorageClass: conn.StorageClass,
 		}),
-		Key: key,
+		Key:             key,
+		ObjectLockHours: conn.ObjectLockHours,
 	}
 
 	return nil
@@ -129,4 +130,13 @@ func (a *App) DownloadFile(key, version, downloadID string) error {
 
 	runtime.EventsEmit(a.ctx, "download-complete", downloadID)
 	return nil
+}
+
+func (a *App) DeleteFile(key, version string) error {
+	b, err := bucket.New(a.bucket)
+	if err != nil {
+		return err
+	}
+
+	return b.DeleteFile(key+".age", version)
 }
