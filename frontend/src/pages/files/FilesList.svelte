@@ -32,11 +32,20 @@
       >
         <div class="icon">
           {#if file.type === "directory"}
-            <IconDirectory font-size="var(--text-lg)" />
+            <IconDirectory
+              font-size="var(--text-lg)"
+              color="var(--color-bg-primary-muted)"
+            />
           {:else if file.hasMultipleVersions}
-            <IconFileMultiple font-size="var(--text-lg)" />
+            <IconFileMultiple
+              font-size="var(--text-lg)"
+              color="var(--color-alpha-800)"
+            />
           {:else}
-            <IconFile font-size="var(--text-lg)" />
+            <IconFile
+              font-size="var(--text-lg)"
+              color="var(--color-alpha-800)"
+            />
           {/if}
         </div>
 

@@ -41,6 +41,7 @@
   --color-fg-secondary: #e8e8e8;
 
   --color-bg-primary-subtle: oklch(0.7272 0.1416 138.12 / 15%);
+  --color-bg-primary-muted: oklch(0.7272 0.1416 138.12 / 65%);
 
   --color-bg-error: #8e1b1b;
   --color-fg-error: #f4f4f5;
