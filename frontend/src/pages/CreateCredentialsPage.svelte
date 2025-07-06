@@ -19,6 +19,7 @@
   let keyID = $state("");
   let keySecret = $state("");
   let ageKey = $state("");
+  let objectLockHours = $state("");
 
   const isValid = $derived.by(() => {
     return [url, region, bucket, keyID, keySecret, ageKey].every(
@@ -48,6 +49,7 @@
         keyID,
         keySecret,
         ageKey,
+        objectLockHours: +objectLockHours,
       });
       CreateConnectionString(config)
         .then((value) => {
@@ -76,6 +78,13 @@
     <TextControl
       label="Access Key Secret"
       bind:value={keySecret}
+      autocomplete={false}
+    />
+
+    <TextControl
+      label="Object lock duration (hours)"
+      inputProps={{ type: "number" }}
+      bind:value={objectLockHours}
       autocomplete={false}
     />
 
