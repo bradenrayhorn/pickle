@@ -34,6 +34,7 @@ export function getErrorHandler(): (error: unknown) => void {
       type: "error",
       title: "Error",
       description: message,
+      duration: 10000,
     });
   };
 }

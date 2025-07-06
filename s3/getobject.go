@@ -9,7 +9,9 @@ import (
 
 func (c *Client) GetObject(key string, versionId string) (io.ReadCloser, error) {
 	query := url.Values{}
-	query.Add("versionId", versionId)
+	if versionId != "" {
+		query.Add("versionId", versionId)
+	}
 	reqURL := c.buildURL(key, query)
 
 	return withRetries(func() (io.ReadCloser, error) {

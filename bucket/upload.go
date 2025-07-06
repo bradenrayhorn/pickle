@@ -32,7 +32,7 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 	archivePath := filepath.Join(workingDir, filename)
 	archive, err := os.Create(archivePath)
 	if err != nil {
-		return fmt.Errorf("create %s: %w", filename, err)
+		return fmt.Errorf("create %s: %w", archivePath, err)
 	}
 	defer func() { _ = archive.Close() }()
 
@@ -47,6 +47,9 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 	}
 
 	if err := w.Close(); err != nil {
+		return fmt.Errorf("close writer: %w", err)
+	}
+	if err := archive.Close(); err != nil {
 		return fmt.Errorf("close encrypted file: %w", err)
 	}
 
@@ -54,6 +57,12 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 	if err != nil {
 		return fmt.Errorf("file stat: %w", err)
 	}
+
+	archive, err = os.Open(archivePath)
+	if err != nil {
+		return fmt.Errorf("open %s: %w", archivePath, err)
+	}
+	defer func() { _ = archive.Close() }()
 
 	// get shasum
 	hash := sha256.New()

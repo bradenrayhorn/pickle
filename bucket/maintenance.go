@@ -9,7 +9,6 @@ import (
 )
 
 func (b *bucket) RunMaintenance() error {
-	// 1. Extend object lock for all active files currently in system.
 	versions, err := b.getObjectVersions()
 	if err != nil {
 		return err
@@ -20,18 +19,38 @@ func (b *bucket) RunMaintenance() error {
 		return err
 	}
 
+	// get and organize files
 	checksumFiles := map[string]s3.VersionInfo{}
+	orphanedChecksumFiles := map[string]s3.VersionInfo{}
+	duplicateChecksumFiles := []s3.VersionInfo{}
+
+	dataFiles := []s3.VersionInfo{}
 	dataFilesToExtend := []s3.VersionInfo{}
 	for _, object := range versions.Versions {
-		if isDataFile(object.Key) && !deletedFiles.isDeleted(object.Key, object.VersionId) {
-			dataFilesToExtend = append(dataFilesToExtend, object)
+		if isDataFile(object.Key) {
+			dataFiles = append(dataFiles, object)
+
+			if !deletedFiles.isDeleted(object.Key, object.VersionId) {
+				dataFilesToExtend = append(dataFilesToExtend, object)
+			}
 		}
 
 		if isChecksumFile(object.Key) {
-			checksumFiles[object.Key] = object
+			if object.IsLatest {
+				checksumFiles[object.Key] = object
+				orphanedChecksumFiles[object.Key] = object
+			} else {
+				duplicateChecksumFiles = append(duplicateChecksumFiles, object)
+			}
 		}
 	}
 
+	// calculate orphaned checksum files
+	for _, object := range dataFiles {
+		delete(orphanedChecksumFiles, getChecksumPath(object.Key, object.VersionId))
+	}
+
+	// 1. Extend object lock for all active files currently in system.
 	retention := &s3.ObjectLockRetention{
 		Mode:  "COMPLIANCE",
 		Until: time.Now().Add(time.Hour * time.Duration(b.objectLockHours)),
@@ -55,10 +74,16 @@ func (b *bucket) RunMaintenance() error {
 		retentionError = errors.Join(retentionErrors...)
 	}
 
-	// 2. Try to delete any files marked for deletion.
+	// 2. Try to delete any files marked for deletion and orphaned checksum files.
 	toDelete := []s3.ObjectIdentifier{}
 	for _, pair := range deletedFiles.keyVersionPairs {
 		toDelete = append(toDelete, s3.ObjectIdentifier{Key: pair.key, VersionID: pair.version})
+	}
+	for _, object := range orphanedChecksumFiles {
+		toDelete = append(toDelete, s3.ObjectIdentifier{Key: object.Key, VersionID: object.VersionId})
+	}
+	for _, object := range duplicateChecksumFiles {
+		toDelete = append(toDelete, s3.ObjectIdentifier{Key: object.Key, VersionID: object.VersionId})
 	}
 
 	var deleteError error
