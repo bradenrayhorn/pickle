@@ -52,6 +52,8 @@
   --color-accent-loading: oklch(0.5838 0.2072 259.81);
   --color-accent-success: oklch(0.7309 0.2121 150.88);
 
+  --color-modal-backdrop: rgba(0, 0, 0, 0.6);
+
   --color-bg-base: #18181b;
   --color-fg-base: #f4f4f5;
 }

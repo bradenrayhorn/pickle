@@ -36,7 +36,7 @@
     <Button icon variant="secondary" onclick={onRefresh}>
       <IconRefresh font-size="var(--text-lg)" />
     </Button>
-    <UploadFile {onRefresh} />
+    <UploadFile {onRefresh} {path} />
   </div>
 </nav>
 
