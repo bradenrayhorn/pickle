@@ -18,7 +18,8 @@
   --font-bold: 700;
 
   /* z-index */
-  --z-alert: 100;
+  --z-alert: 1000;
+  --z-banner: 10;
 
   /* Colors */
   --color-alpha-50: rgba(255, 255, 255, 0.04);

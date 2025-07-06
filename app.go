@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/bradenrayhorn/pickle/bucket"
 	"github.com/bradenrayhorn/pickle/connection"
@@ -17,7 +18,8 @@ import (
 type App struct {
 	ctx context.Context
 
-	bucket *bucket.Config
+	bucket       *bucket.Config
+	maintainedAt time.Time
 }
 
 // NewApp creates a new App application struct
@@ -91,7 +93,16 @@ func (a *App) ListFiles() ([]bucket.BucketFile, error) {
 		return nil, err
 	}
 
-	return b.GetFiles()
+	files, err := b.GetFiles()
+	if err != nil {
+		return nil, err
+	}
+
+	if a.maintainedAt.Before(time.Now().Add(time.Hour * -4)) {
+		a.triggerMaintenance()
+	}
+
+	return files, nil
 }
 
 func (a *App) UploadFile(diskPath string, targetPath string) error {
@@ -139,4 +150,26 @@ func (a *App) DeleteFile(key, version string) error {
 	}
 
 	return b.DeleteFile(key+".age", version)
+}
+
+func (a *App) triggerMaintenance() {
+	a.maintainedAt = time.Now()
+
+	go func() {
+		runtime.EventsEmit(a.ctx, "maintenance-start")
+
+		bucket, err := bucket.New(a.bucket)
+		if err != nil {
+			runtime.EventsEmit(a.ctx, "maintenance-end", err)
+			return
+		}
+
+		err = bucket.RunMaintenance()
+		if err != nil {
+			runtime.EventsEmit(a.ctx, "maintenance-end", err)
+			return
+		}
+
+		runtime.EventsEmit(a.ctx, "maintenance-end")
+	}()
 }

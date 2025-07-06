@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MaintenanceWatcher from "$lib/MaintenanceWatcher.svelte";
   import { initToaster } from "$lib/toast/toast";
   import Toaster from "$lib/toast/Toaster.svelte";
   import ConnectPage from "./pages/ConnectPage.svelte";
@@ -30,3 +31,5 @@
 {:else if page === "files"}
   <FilesPage />
 {/if}
+
+<MaintenanceWatcher />

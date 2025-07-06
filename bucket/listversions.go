@@ -33,12 +33,11 @@ func (b *bucket) GetFiles() ([]BucketFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get deleted files: %w", err)
 	}
-	fmt.Printf("get deleted fiels: %v\n", deletedFiles)
 
 	files := []BucketFile{}
 	for _, version := range result.Versions {
-		// Ignore non-age files
-		if !strings.HasSuffix(version.Key, ".age") {
+		// Ignore non-data files
+		if !isDataFile(version.Key) {
 			continue
 		}
 

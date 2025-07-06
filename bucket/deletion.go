@@ -3,23 +3,64 @@ package bucket
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/bradenrayhorn/pickle/s3"
 )
 
+type keyVersionPair struct {
+	key     string
+	version string
+}
+
 type deletedFiles struct {
-	keyVersionPairs []string
+	keyVersionPairs []keyVersionPair
 }
 
 func (df *deletedFiles) isDeleted(key, versionID string) bool {
-	return slices.Contains(df.keyVersionPairs, fmt.Sprintf("%s-%s", key, versionID))
+	for _, pair := range df.keyVersionPairs {
+		if pair.key == key && pair.version == versionID {
+			return true
+		}
+	}
+	return false
 }
 
 func (df *deletedFiles) append(key, versionID string) {
-	df.keyVersionPairs = append(df.keyVersionPairs, fmt.Sprintf("%s-%s", key, versionID))
+	df.keyVersionPairs = append(df.keyVersionPairs, keyVersionPair{key, versionID})
+}
+
+func (df *deletedFiles) deserializeAndAddLine(line string) {
+	parts := strings.Split(strings.TrimSpace(line), "-")
+	if len(parts) != 2 {
+		return
+	}
+	key, err := base64.RawStdEncoding.DecodeString(parts[0])
+	if err != nil {
+		return
+	}
+	version, err := base64.RawStdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return
+	}
+
+	df.keyVersionPairs = append(df.keyVersionPairs, keyVersionPair{
+		key:     string(key),
+		version: string(version),
+	})
+}
+
+func (df *deletedFiles) serialize() string {
+	lines := []string{}
+	for _, pair := range df.keyVersionPairs {
+		lines = append(lines, fmt.Sprintf("%s-%s",
+			base64.RawStdEncoding.EncodeToString([]byte(pair.key)),
+			base64.RawStdEncoding.EncodeToString([]byte(pair.version)),
+		))
+	}
+	return strings.Join(lines, "\r\n")
 }
 
 var (
@@ -53,12 +94,12 @@ func (b *bucket) refreshDeletedFiles() error {
 		defer func() { _ = src.Close() }()
 
 		scanner := bufio.NewScanner(src)
-		deleted := []string{}
+		deleted := &deletedFiles{}
 
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			if line != "" {
-				deleted = append(deleted, line)
+				deleted.deserializeAndAddLine(line)
 			}
 		}
 
@@ -66,7 +107,7 @@ func (b *bucket) refreshDeletedFiles() error {
 			return fmt.Errorf("parse deleted files: %w", err)
 		}
 
-		b.cachedDeletedFiles = &deletedFiles{keyVersionPairs: deleted}
+		b.cachedDeletedFiles = deleted
 		return nil
 	}
 }
@@ -89,10 +130,9 @@ func (b *bucket) DeleteFile(key, versionID string) error {
 	}
 
 	deletedFiles.append(key, versionID)
-	fmt.Printf("appeneded deleted file %s-%s\n", key, versionID)
 
 	// upload new deleted registry
-	serialized := []byte(strings.Join(deletedFiles.keyVersionPairs, "\r\n"))
+	serialized := []byte(deletedFiles.serialize())
 	deleteResponse, err := b.client.PutObject(deletedFilesKey, bytes.NewReader(serialized), int64(len(serialized)), nil)
 	if err != nil {
 		return err

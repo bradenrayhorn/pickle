@@ -16,9 +16,10 @@ type ObjectLockRetention struct {
 	Until time.Time
 }
 
-func (c *Client) PutObjectRetention(key string, retention *ObjectLockRetention) error {
+func (c *Client) PutObjectRetention(key string, versionID string, retention *ObjectLockRetention) error {
 	query := url.Values{}
 	query.Set("retention", "")
+	query.Set("versionID", versionID)
 	reqURL := c.buildURL(key, query)
 
 	retentionXML := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
