@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"filippo.io/age"
 	"github.com/bradenrayhorn/pickle/bucket"
 	"github.com/bradenrayhorn/pickle/connection"
 	"github.com/bradenrayhorn/pickle/s3"
@@ -56,11 +55,6 @@ func loadConfig() (*bucket.Config, error) {
 		return nil, err
 	}
 
-	key, err := age.ParseX25519Identity(conn.AgePrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("parse age identity: %w", err)
-	}
-
 	return &bucket.Config{
 		Client: s3.NewClient(s3.Config{
 			URL:          conn.URL,
@@ -70,7 +64,6 @@ func loadConfig() (*bucket.Config, error) {
 			KeySecret:    conn.KeySecret,
 			StorageClass: conn.StorageClass,
 		}),
-		Key:             key,
 		ObjectLockHours: conn.ObjectLockHours,
 	}, nil
 }
