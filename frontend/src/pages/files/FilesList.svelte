@@ -4,11 +4,13 @@
 
   let {
     fileList,
+    isInTrashBin,
     onRefresh,
     onOpenPath,
     onDownloadFile,
   }: {
     fileList: FileList;
+    isInTrashBin: boolean;
     onRefresh: () => void;
     onOpenPath: (path: string) => void;
     onDownloadFile: (key: string, version: string, displayName: string) => void;
@@ -17,7 +19,7 @@
 
 <ul>
   {#each fileList as file (file.type === "file" ? file.path + file.versionID : file.path)}
-    <FileRow {file} {onRefresh} {onDownloadFile} {onOpenPath} />
+    <FileRow {file} {isInTrashBin} {onRefresh} {onDownloadFile} {onOpenPath} />
   {/each}
 </ul>
 

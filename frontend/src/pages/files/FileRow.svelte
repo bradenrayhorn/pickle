@@ -5,16 +5,18 @@
   import IconFileMultiple from "~icons/mdi/file-multiple";
   import dayjs from "dayjs";
   import Button from "$lib/components/Button.svelte";
-  import { DeleteFile } from "@wails/main/App";
+  import { DeleteFile, RestoreFile } from "@wails/main/App";
   import { getErrorHandler, getToaster } from "$lib/toast/toast";
 
   let {
     file,
+    isInTrashBin,
     onRefresh,
     onOpenPath,
     onDownloadFile,
   }: {
     file: FileListItem;
+    isInTrashBin: boolean;
     onRefresh: () => void;
     onOpenPath: (path: string) => void;
     onDownloadFile: (
@@ -83,27 +85,51 @@
         Cancel
       </Button>
 
-      <Button
-        isLoading={isDeleting}
-        onclick={() => {
-          isDeleting = true;
-          DeleteFile(file.path, file.versionID)
-            .then(() => {
-              toaster.create({
-                type: "success",
-                title: file.displayName,
-                description: "Successfully deleted!",
+      {#if !isInTrashBin}
+        <Button
+          isLoading={isDeleting}
+          onclick={() => {
+            isDeleting = true;
+            DeleteFile(file.path, file.versionID)
+              .then(() => {
+                toaster.create({
+                  type: "success",
+                  title: file.displayName,
+                  description: "Successfully deleted!",
+                });
+                actionsDialog?.close();
+                onRefresh();
+              })
+              .catch(onError)
+              .finally(() => {
+                isDeleting = false;
               });
-              actionsDialog?.close();
-              onRefresh();
-            })
-            .catch(onError)
-            .finally(() => {
-              isDeleting = false;
-            });
-        }}
-        variant="destructive">Delete</Button
-      >
+          }}
+          variant="destructive">Delete</Button
+        >
+      {:else}
+        <Button
+          isLoading={isDeleting}
+          onclick={() => {
+            isDeleting = true;
+            RestoreFile(file.path, file.versionID)
+              .then(() => {
+                toaster.create({
+                  type: "success",
+                  title: file.displayName,
+                  description: "Successfully restored!",
+                });
+                actionsDialog?.close();
+                onRefresh();
+              })
+              .catch(onError)
+              .finally(() => {
+                isDeleting = false;
+              });
+          }}
+          variant="destructive">Restore</Button
+        >
+      {/if}
 
       <Button
         disabled={isDeleting}

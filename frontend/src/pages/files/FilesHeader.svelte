@@ -2,13 +2,21 @@
   import Button from "$lib/components/Button.svelte";
   import UploadFile from "./UploadFile.svelte";
   import IconRefresh from "~icons/mdi/Refresh";
+  import IconTrashBin from "~icons/mdi/trash-can-outline";
+  import IconTrashBinExit from "~icons/mdi/exit-run";
 
   let {
     path,
+    isInTrashBin,
+    onOpenTrashBin,
+    onCloseTrashBin,
     onOpenPath,
     onRefresh,
   }: {
     path: string;
+    isInTrashBin: boolean;
+    onOpenTrashBin: () => void;
+    onCloseTrashBin: () => void;
     onOpenPath: (path: string) => void;
     onRefresh: () => void;
   } = $props();
@@ -33,10 +41,24 @@
   </div>
 
   <div class="actions">
-    <Button icon variant="secondary" onclick={onRefresh}>
-      <IconRefresh font-size="var(--text-lg)" />
-    </Button>
-    <UploadFile {onRefresh} {path} />
+    {#if isInTrashBin}
+      <Button icon onclick={onCloseTrashBin}>
+        <div class="exit-trash">
+          <div>Exit Trash Bin</div>
+          <IconTrashBinExit font-size="var(--text-lg)" />
+        </div>
+      </Button>
+    {:else}
+      <Button icon variant="secondary" onclick={onOpenTrashBin}>
+        <IconTrashBin font-size="var(--text-lg)" />
+      </Button>
+
+      <Button icon variant="secondary" onclick={onRefresh}>
+        <IconRefresh font-size="var(--text-lg)" />
+      </Button>
+
+      <UploadFile {onRefresh} {path} />
+    {/if}
   </div>
 </nav>
 
@@ -52,13 +74,13 @@
   }
 
   .path {
-    font-family: monospace;
     display: flex;
     align-items: center;
     overflow: hidden;
     gap: calc(var(--spacing) * 2);
 
     .breadcrumbs {
+      font-family: monospace;
       display: flex;
       align-items: center;
       flex-wrap: wrap;
@@ -84,5 +106,11 @@
     display: flex;
     align-items: center;
     gap: calc(var(--spacing) * 2);
+
+    & .exit-trash {
+      display: flex;
+      align-items: center;
+      gap: calc(var(--spacing) * 1);
+    }
   }
 </style>

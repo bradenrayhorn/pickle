@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DownloadFile, ListFiles } from "@wails/main/App";
+  import { DownloadFile, ListFiles, ListFilesInTrash } from "@wails/main/App";
   import type { bucket } from "@wails/models";
   import { buildFileList } from "./files/files";
   import FilesHeader from "./files/FilesHeader.svelte";
@@ -13,6 +13,7 @@
 
   let files = $state<Array<bucket.BucketFile>>([]);
   let path = $state("");
+  let isInTrashBin = $state(false);
 
   const fileList = $derived.by(() => {
     return buildFileList(path, files);
@@ -43,7 +44,7 @@
 
   // file list
   function refreshFiles() {
-    ListFiles()
+    (isInTrashBin ? ListFilesInTrash() : ListFiles())
       .then((res) => {
         files = res;
         if (path !== "" && !files.some((f) => f.name.startsWith(`${path}/`))) {
@@ -59,6 +60,15 @@
 <div>
   <FilesHeader
     {path}
+    {isInTrashBin}
+    onOpenTrashBin={() => {
+      isInTrashBin = true;
+      refreshFiles();
+    }}
+    onCloseTrashBin={() => {
+      isInTrashBin = false;
+      refreshFiles();
+    }}
     onOpenPath={(newPath) => {
       path = newPath;
     }}
@@ -69,6 +79,7 @@
 <div>
   <FilesList
     {fileList}
+    {isInTrashBin}
     onRefresh={refreshFiles}
     onOpenPath={(newPath) => {
       path = newPath;

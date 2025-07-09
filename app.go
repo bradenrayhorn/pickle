@@ -105,6 +105,15 @@ func (a *App) ListFiles() ([]bucket.BucketFile, error) {
 	return files, nil
 }
 
+func (a *App) ListFilesInTrash() ([]bucket.BucketFile, error) {
+	b, err := bucket.New(a.bucket)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.GetTrashedFiles()
+}
+
 func (a *App) UploadFile(diskPath string, targetPath string) error {
 	b, err := bucket.New(a.bucket)
 	if err != nil {
@@ -150,6 +159,15 @@ func (a *App) DeleteFile(key, version string) error {
 	}
 
 	return b.DeleteFile(key+".age", version)
+}
+
+func (a *App) RestoreFile(key, version string) error {
+	b, err := bucket.New(a.bucket)
+	if err != nil {
+		return err
+	}
+
+	return b.RestoreFile(key+".age", version)
 }
 
 func (a *App) triggerMaintenance() {

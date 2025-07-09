@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/bradenrayhorn/pickle/s3"
 )
@@ -139,6 +140,29 @@ func (b *bucket) DeleteFile(key, versionID string) error {
 	deletedFiles.append(key, versionID)
 
 	return b.persistDeleteRegistry()
+}
+
+func (b *bucket) RestoreFile(key, versionID string) error {
+	deletedFiles, err := b.getDeletedFiles()
+	if err != nil {
+		return err
+	}
+
+	deletedFiles.remove(key, versionID)
+
+	if err := b.persistDeleteRegistry(); err != nil {
+		return fmt.Errorf("persist delete registry: %w", err)
+	}
+
+	retention := &s3.ObjectLockRetention{
+		Mode:  "COMPLIANCE",
+		Until: time.Now().Add(time.Hour * time.Duration(b.objectLockHours)),
+	}
+
+	if err := b.client.PutObjectRetention(key, versionID, retention); err != nil {
+		return fmt.Errorf("update retention %s: %w", key, err)
+	}
+	return nil
 }
 
 func (b *bucket) persistDeleteRegistry() error {
