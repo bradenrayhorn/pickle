@@ -50,6 +50,28 @@ func (b *bucket) RunMaintenance() error {
 		delete(orphanedChecksumFiles, getChecksumPath(object.Key, object.VersionId))
 	}
 
+	// 0. Remove any permanently deleted files from registry
+	hasMadeChanges := false
+	for _, pair := range deletedFiles.keyVersionPairs {
+		fileStillExists := false
+		for _, object := range dataFiles {
+			if object.Key == pair.key && object.VersionId == pair.version {
+				fileStillExists = true
+				break
+			}
+		}
+
+		if !fileStillExists {
+			deletedFiles.remove(pair.key, pair.version)
+			hasMadeChanges = true
+		}
+	}
+	if hasMadeChanges {
+		if err := b.persistDeleteRegistry(); err != nil {
+			return fmt.Errorf("persist delete registry: %w", err)
+		}
+	}
+
 	// 1. Extend object lock for all active files currently in system.
 	retention := &s3.ObjectLockRetention{
 		Mode:  "COMPLIANCE",
@@ -78,6 +100,9 @@ func (b *bucket) RunMaintenance() error {
 	toDelete := []s3.ObjectIdentifier{}
 	for _, pair := range deletedFiles.keyVersionPairs {
 		toDelete = append(toDelete, s3.ObjectIdentifier{Key: pair.key, VersionID: pair.version})
+		if checksumObject, ok := checksumFiles[getChecksumPath(pair.key, pair.version)]; ok {
+			toDelete = append(toDelete, s3.ObjectIdentifier{Key: checksumObject.Key, VersionID: checksumObject.VersionId})
+		}
 	}
 	for _, object := range orphanedChecksumFiles {
 		toDelete = append(toDelete, s3.ObjectIdentifier{Key: object.Key, VersionID: object.VersionId})

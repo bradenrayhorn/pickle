@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/bradenrayhorn/pickle/s3"
@@ -30,6 +31,12 @@ func (df *deletedFiles) isDeleted(key, versionID string) bool {
 
 func (df *deletedFiles) append(key, versionID string) {
 	df.keyVersionPairs = append(df.keyVersionPairs, keyVersionPair{key, versionID})
+}
+
+func (df *deletedFiles) remove(key, versionID string) {
+	df.keyVersionPairs = slices.DeleteFunc(df.keyVersionPairs, func(pair keyVersionPair) bool {
+		return pair.key == key && pair.version == versionID
+	})
 }
 
 func (df *deletedFiles) deserializeAndAddLine(line string) {
@@ -130,6 +137,15 @@ func (b *bucket) DeleteFile(key, versionID string) error {
 	}
 
 	deletedFiles.append(key, versionID)
+
+	return b.persistDeleteRegistry()
+}
+
+func (b *bucket) persistDeleteRegistry() error {
+	deletedFiles, err := b.getDeletedFiles()
+	if err != nil {
+		return err
+	}
 
 	// upload new deleted registry
 	serialized := []byte(deletedFiles.serialize())
