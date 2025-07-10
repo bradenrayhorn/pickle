@@ -30,15 +30,16 @@ type Config struct {
 }
 
 type BucketFile struct {
-	Name         string `json:"name"`
+	Key          string `json:"key"`
+	Path         string `json:"path"`
 	IsLatest     bool   `json:"isLatest"`
-	Version      string `json:"version"`
+	VersionID    string `json:"versionID"`
 	LastModified string `json:"lastModified"`
 	Size         string `json:"size"`
 }
 
 func New(config *Config) (bucket, error) {
-	if config.Client == nil || config.Key == nil {
+	if config.Client == nil {
 		return bucket{}, fmt.Errorf("connection is not configured")
 	}
 
@@ -49,7 +50,17 @@ func New(config *Config) (bucket, error) {
 	}, nil
 }
 
-func (b *bucket) DownloadFile(bucketKey string, bucketVersion string, diskPath string) error {
+func (b *bucket) DownloadFile(bucketKey string, diskPath string) error {
+	if b.key == nil {
+		return fmt.Errorf("key is not configured")
+	}
+
+	// find version id
+	verisonID, err := b.getObjectVersionForKey(bucketKey)
+	if err != nil {
+		return err
+	}
+
 	// create working dir
 	workingDir, err := os.MkdirTemp("", "pickle-*")
 	if err != nil {
@@ -65,7 +76,7 @@ func (b *bucket) DownloadFile(bucketKey string, bucketVersion string, diskPath s
 	}
 	defer func() { _ = downloadFile.Close() }()
 
-	objectReader, err := b.client.GetObject(bucketKey, bucketVersion)
+	objectReader, err := b.client.GetObject(bucketKey, verisonID)
 	defer func() {
 		if objectReader != nil {
 			_ = objectReader.Close()
@@ -90,7 +101,7 @@ func (b *bucket) DownloadFile(bucketKey string, bucketVersion string, diskPath s
 	}
 
 	// compute SHA checksum if it exists
-	sumSrc, err := b.client.GetObject(getChecksumPath(bucketKey, bucketVersion), "")
+	sumSrc, err := b.client.GetObject(getChecksumPath(bucketKey), "")
 	if err == nil {
 		defer func() { _ = sumSrc.Close() }()
 		expectedSum, err := io.ReadAll(sumSrc)
@@ -108,7 +119,6 @@ func (b *bucket) DownloadFile(bucketKey string, bucketVersion string, diskPath s
 		actualSum := make([]byte, hex.EncodedLen(len(summedHash)))
 		hex.Encode(actualSum, summedHash)
 
-		fmt.Printf("expect: %v\nactual: %v\n", expectedSum, actualSum)
 		if !bytes.Equal(expectedSum, actualSum) {
 			return fmt.Errorf("file may have been corrupted. checksums do not match.")
 		}

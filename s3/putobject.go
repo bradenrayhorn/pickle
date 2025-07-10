@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"crypto/md5"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -13,7 +12,7 @@ type PutObjectResponse struct {
 	VersionID string
 }
 
-func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, retention *ObjectLockRetention) (*PutObjectResponse, error) {
+func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, crc32cChecksum []byte, retention *ObjectLockRetention) (*PutObjectResponse, error) {
 	reqURL := c.buildURL(key, nil)
 
 	return withRetries(func() (*PutObjectResponse, error) {
@@ -39,17 +38,8 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, ret
 			req.Header.Set("x-amz-storage-class", c.storageClass)
 		}
 
-		// compute md5 hash
-		hash := md5.New()
-		if _, err := io.Copy(hash, data); err != nil {
-			return nil, err
-		}
-		hashSum := hash.Sum(nil)
-		if _, err := data.Seek(0, io.SeekStart); err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("Content-MD5", base64.StdEncoding.EncodeToString(hashSum[:]))
+		req.Header.Set("x-amz-sdk-checksum-algorithm", "CRC32C")
+		req.Header.Set("x-amz-checksum-crc32c", base64.StdEncoding.EncodeToString(crc32cChecksum))
 
 		// sign and send request
 		if err := c.signV4(req, data); err != nil {

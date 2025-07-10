@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/bradenrayhorn/pickle/bucket"
@@ -123,14 +124,21 @@ func (a *App) UploadFile(diskPath string, targetPath string) error {
 	return b.UploadFile(diskPath, targetPath)
 }
 
-func (a *App) DownloadFile(key, version, downloadID string) error {
+func (a *App) DownloadFile(key, downloadID string) error {
 	b, err := bucket.New(a.bucket)
 	if err != nil {
 		return err
 	}
 
+	keyFileName := path.Base(key)
+	keyFileNameParts := strings.Split(keyFileName, ".")
+	defaultName := keyFileName
+	if len(keyFileNameParts) > 2 {
+		defaultName = strings.Join(keyFileNameParts[:len(keyFileNameParts)-2], ".")
+	}
+
 	diskPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: path.Base(key),
+		DefaultFilename: defaultName,
 	})
 	if err != nil {
 		return fmt.Errorf("select path for save: %w", err)
@@ -143,7 +151,7 @@ func (a *App) DownloadFile(key, version, downloadID string) error {
 
 	runtime.EventsEmit(a.ctx, "download-start", downloadID)
 
-	err = b.DownloadFile(key+".age", version, diskPath)
+	err = b.DownloadFile(key, diskPath)
 	if err != nil {
 		return fmt.Errorf("download file %s: %w", key, err)
 	}
@@ -152,22 +160,22 @@ func (a *App) DownloadFile(key, version, downloadID string) error {
 	return nil
 }
 
-func (a *App) DeleteFile(key, version string) error {
+func (a *App) DeleteFile(key string) error {
 	b, err := bucket.New(a.bucket)
 	if err != nil {
 		return err
 	}
 
-	return b.DeleteFile(key+".age", version)
+	return b.DeleteFile(key)
 }
 
-func (a *App) RestoreFile(key, version string) error {
+func (a *App) RestoreFile(key string) error {
 	b, err := bucket.New(a.bucket)
 	if err != nil {
 		return err
 	}
 
-	return b.RestoreFile(key+".age", version)
+	return b.RestoreFile(key)
 }
 
 func (a *App) triggerMaintenance() {

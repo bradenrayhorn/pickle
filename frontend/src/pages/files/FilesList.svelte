@@ -13,12 +13,12 @@
     isInTrashBin: boolean;
     onRefresh: () => void;
     onOpenPath: (path: string) => void;
-    onDownloadFile: (key: string, version: string, displayName: string) => void;
+    onDownloadFile: (key: string, displayName: string) => void;
   } = $props();
 </script>
 
 <ul>
-  {#each fileList as file (file.type === "file" ? file.path + file.versionID : file.path)}
+  {#each fileList as file (file.type === "file" ? file.key : file.path)}
     <FileRow {file} {isInTrashBin} {onRefresh} {onDownloadFile} {onOpenPath} />
   {/each}
 </ul>

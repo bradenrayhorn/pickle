@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,10 +14,13 @@ import (
 
 	"filippo.io/age"
 	"github.com/bradenrayhorn/pickle/s3"
+	"github.com/segmentio/ksuid"
 )
 
 func (b *bucket) UploadFile(diskPath string, targetPath string) error {
-	filename := filepath.Base(diskPath) + ".age"
+	if b.key == nil {
+		return fmt.Errorf("key is not configured")
+	}
 
 	workingDir, err := os.MkdirTemp("", "pickle-*")
 	if err != nil {
@@ -29,7 +33,7 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 		return fmt.Errorf("open file at %s: %w", diskPath, err)
 	}
 
-	archivePath := filepath.Join(workingDir, filename)
+	archivePath := filepath.Join(workingDir, "archive.age")
 	archive, err := os.Create(archivePath)
 	if err != nil {
 		return fmt.Errorf("create %s: %w", archivePath, err)
@@ -64,6 +68,16 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 	}
 	defer func() { _ = archive.Close() }()
 
+	// get crc32c checksum
+	checksum := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	if _, err := io.Copy(checksum, archive); err != nil {
+		return err
+	}
+	if _, err := archive.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	crc32cSum := checksum.Sum(nil)
+
 	// get shasum
 	hash := sha256.New()
 	if _, err := io.Copy(hash, archive); err != nil {
@@ -72,21 +86,28 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 	if _, err := archive.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
-	sha256Sum := []byte(hex.EncodeToString(hash.Sum(nil)))
+	sha256Sum := hash.Sum(nil)
+	sha256SumHex := []byte(hex.EncodeToString(sha256Sum))
 
 	lockTime := &s3.ObjectLockRetention{
 		Mode:  "COMPLIANCE",
 		Until: time.Now().Add(time.Hour * time.Duration(b.objectLockHours)),
 	}
 
-	keyName := cleanKeyName(targetPath + ".age")
+	fileID := ksuid.New()
+	keyName := cleanKeyName(targetPath + ".age." + fileID.String())
 
-	uploadedArchive, err := b.client.PutObject(keyName, archive, stat.Size(), lockTime)
+	_, err = b.client.PutObject(keyName, archive, stat.Size(), crc32cSum, lockTime)
 	if err != nil {
 		return fmt.Errorf("upload to s3: %w", err)
 	}
 
-	_, err = b.client.PutObject(getChecksumPath(keyName, uploadedArchive.VersionID), bytes.NewReader(sha256Sum), int64(len(sha256Sum)), lockTime)
+	sha256CRC32Cchecksum := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	_, err = sha256CRC32Cchecksum.Write(sha256SumHex)
+	if err != nil {
+		fmt.Errorf("crc32c checksum: %w", err)
+	}
+	_, err = b.client.PutObject(getChecksumPath(keyName), bytes.NewReader(sha256SumHex), int64(len(sha256SumHex)), sha256CRC32Cchecksum.Sum(nil), lockTime)
 	if err != nil {
 		return fmt.Errorf("upload to s3: %w", err)
 	}

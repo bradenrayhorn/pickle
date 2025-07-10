@@ -47,7 +47,7 @@
     (isInTrashBin ? ListFilesInTrash() : ListFiles())
       .then((res) => {
         files = res;
-        if (path !== "" && !files.some((f) => f.name.startsWith(`${path}/`))) {
+        if (path !== "" && !files.some((f) => f.path.startsWith(`${path}/`))) {
           path = "";
         }
       })
@@ -84,13 +84,13 @@
     onOpenPath={(newPath) => {
       path = newPath;
     }}
-    onDownloadFile={(key, version, displayName) => {
+    onDownloadFile={(key, displayName) => {
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
       const downloadID = btoa(String.fromCharCode(...bytes));
 
       downloadNameMap[downloadID] = displayName;
-      DownloadFile(key, version, downloadID)
+      DownloadFile(key, downloadID)
         .catch((error) => {
           toaster.remove(downloadID);
           onError(error);

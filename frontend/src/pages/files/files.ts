@@ -2,9 +2,9 @@ import type { bucket } from "@wails/models";
 
 type File = {
   type: "file";
+  key: string;
   path: string;
   displayName: string;
-  versionID: string;
   lastModified: string;
   size: string;
   hasMultipleVersions: boolean;
@@ -27,7 +27,7 @@ export function buildFileList(
   const files: Record<string, Array<bucket.BucketFile>> = {};
 
   // Check if we're in "Versions" mode.
-  const exactFileVersions = bucketFiles.filter((f) => f.name === path);
+  const exactFileVersions = bucketFiles.filter((f) => f.path === path);
   if (exactFileVersions.length > 0) {
     exactFileVersions.sort((a, b) =>
       b.lastModified.localeCompare(a.lastModified),
@@ -35,25 +35,27 @@ export function buildFileList(
 
     return exactFileVersions.map((file, i) => ({
       type: "file",
-      path: file.name,
-      displayName: file.name + ` [version ${exactFileVersions.length - i}]`,
+      key: file.key,
+      path: file.path,
+      displayName:
+        file.path.split("/").reverse()[0] +
+        ` [version ${exactFileVersions.length - i}]`,
       lastModified: file.lastModified,
       size: file.size,
-      versionID: file.version,
       hasMultipleVersions: false,
     }));
   }
 
   const dirFilter = path.length > 0 ? `${path}/` : "";
   bucketFiles
-    .filter((file) => file.name.startsWith(dirFilter))
+    .filter((file) => file.path.startsWith(dirFilter))
     .forEach((file) => {
-      const parts = file.name.slice(dirFilter.length).split("/");
+      const parts = file.path.slice(dirFilter.length).split("/");
       if (parts.length > 1) {
         directories.add(parts[0]);
       } else {
-        files[file.name] = files[file.name] ?? [];
-        files[file.name].push(file);
+        files[file.path] = files[file.path] ?? [];
+        files[file.path].push(file);
       }
     });
 
@@ -63,11 +65,11 @@ export function buildFileList(
 
     const file: File = {
       type: "file",
-      path: key,
+      key: latest.key,
+      path: latest.path,
       displayName: key.slice(dirFilter.length),
       lastModified: latest.lastModified,
       size: latest.size,
-      versionID: latest.version,
       hasMultipleVersions: versions.length > 1,
     };
     return file;
@@ -83,6 +85,8 @@ export function buildFileList(
   // Sort and return
   fileList.sort((a, b) => a.displayName.localeCompare(b.displayName));
   directoryList.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+  console.log([...directoryList, ...fileList]);
 
   return [...directoryList, ...fileList];
 }

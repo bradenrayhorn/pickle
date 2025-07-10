@@ -1,16 +1,19 @@
 package bucket
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
 
-func getChecksumPath(key, versionID string) string {
-	return fmt.Sprintf("_pickle/checksum/%s_%s.sha256", key, versionID)
+func getChecksumPath(key string) string {
+	return fmt.Sprintf("_pickle/checksum/%s.sha256", hex.EncodeToString([]byte(key)))
 }
 
 func isDataFile(key string) bool {
-	return strings.HasSuffix(key, ".age") && !strings.HasPrefix(key, "_pickle/")
+	parts := strings.Split(key, ".")
+
+	return len(parts) > 2 && parts[len(parts)-2] == "age" && !strings.HasPrefix(key, "_pickle/")
 }
 
 func isChecksumFile(key string) bool {

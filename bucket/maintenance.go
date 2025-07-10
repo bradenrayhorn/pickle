@@ -3,13 +3,14 @@ package bucket
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/bradenrayhorn/pickle/s3"
 )
 
 func (b *bucket) RunMaintenance() error {
-	versions, err := b.getObjectVersions()
+	versionResult, err := b.getObjectVersions()
 	if err != nil {
 		return err
 	}
@@ -20,53 +21,59 @@ func (b *bucket) RunMaintenance() error {
 	}
 
 	// get and organize files
+	dataFiles := map[string]s3.VersionInfo{}
 	checksumFiles := map[string]s3.VersionInfo{}
-	orphanedChecksumFiles := map[string]s3.VersionInfo{}
-	duplicateChecksumFiles := []s3.VersionInfo{}
+	duplicateFiles := []s3.VersionInfo{}
 
-	dataFiles := []s3.VersionInfo{}
+	potentiallyOrphanedChecksumFiles := map[string]s3.VersionInfo{}
 	dataFilesToExtend := []s3.VersionInfo{}
-	for _, object := range versions.Versions {
-		if isDataFile(object.Key) {
-			dataFiles = append(dataFiles, object)
 
-			if !deletedFiles.isDeleted(object.Key, object.VersionId) {
-				dataFilesToExtend = append(dataFilesToExtend, object)
+	// Flip versions to process oldest first.
+	versions := slices.Clone(versionResult.Versions)
+	slices.Reverse(versions)
+
+	for _, object := range versions {
+		if isDataFile(object.Key) {
+			if _, ok := dataFiles[object.Key]; ok {
+				// this is a duplicate key
+				duplicateFiles = append(duplicateFiles, object)
+			} else {
+				// it's an unprocessed key
+				dataFiles[object.Key] = object
+
+				if !deletedFiles.isDeleted(object.Key) {
+					dataFilesToExtend = append(dataFilesToExtend, object)
+				}
 			}
 		}
 
 		if isChecksumFile(object.Key) {
-			if object.IsLatest {
-				checksumFiles[object.Key] = object
-				orphanedChecksumFiles[object.Key] = object
+			if _, ok := checksumFiles[object.Key]; ok {
+				// this is a duplicate key
+				duplicateFiles = append(duplicateFiles, object)
 			} else {
-				duplicateChecksumFiles = append(duplicateChecksumFiles, object)
+				// it's an unprocessed key
+				checksumFiles[object.Key] = object
+				potentiallyOrphanedChecksumFiles[object.Key] = object
 			}
 		}
 	}
 
 	// calculate orphaned checksum files
 	for _, object := range dataFiles {
-		delete(orphanedChecksumFiles, getChecksumPath(object.Key, object.VersionId))
+		delete(potentiallyOrphanedChecksumFiles, getChecksumPath(object.Key))
 	}
+	orphanedChecksumFiles := potentiallyOrphanedChecksumFiles
 
 	// 0. Remove any permanently deleted files from registry
-	hasMadeChanges := false
-	for _, pair := range deletedFiles.keyVersionPairs {
-		fileStillExists := false
-		for _, object := range dataFiles {
-			if object.Key == pair.key && object.VersionId == pair.version {
-				fileStillExists = true
-				break
-			}
-		}
-
-		if !fileStillExists {
-			deletedFiles.remove(pair.key, pair.version)
-			hasMadeChanges = true
+	hasChangedDeleteRegistry := false
+	for _, key := range deletedFiles.keys {
+		if _, ok := dataFiles[key]; !ok {
+			deletedFiles.remove(key)
+			hasChangedDeleteRegistry = true
 		}
 	}
-	if hasMadeChanges {
+	if hasChangedDeleteRegistry {
 		if err := b.persistDeleteRegistry(); err != nil {
 			return fmt.Errorf("persist delete registry: %w", err)
 		}
@@ -84,7 +91,7 @@ func (b *bucket) RunMaintenance() error {
 			retentionErrors = append(retentionErrors, fmt.Errorf("set retention %s: %w", object.Key, err))
 		}
 
-		if checksumObject, ok := checksumFiles[getChecksumPath(object.Key, object.VersionId)]; ok {
+		if checksumObject, ok := checksumFiles[getChecksumPath(object.Key)]; ok {
 			err := b.client.PutObjectRetention(checksumObject.Key, checksumObject.VersionId, retention)
 			if err != nil {
 				retentionErrors = append(retentionErrors, fmt.Errorf("set retention %s: %w", checksumObject.Key, err))
@@ -96,18 +103,20 @@ func (b *bucket) RunMaintenance() error {
 		retentionError = errors.Join(retentionErrors...)
 	}
 
-	// 2. Try to delete any files marked for deletion and orphaned checksum files.
+	// 2. Delete any files marked for deletion, orphaned checksum files, and duplicates.
 	toDelete := []s3.ObjectIdentifier{}
-	for _, pair := range deletedFiles.keyVersionPairs {
-		toDelete = append(toDelete, s3.ObjectIdentifier{Key: pair.key, VersionID: pair.version})
-		if checksumObject, ok := checksumFiles[getChecksumPath(pair.key, pair.version)]; ok {
+	for _, key := range deletedFiles.keys {
+		version := dataFiles[key]
+
+		toDelete = append(toDelete, s3.ObjectIdentifier{Key: version.Key, VersionID: version.VersionId})
+		if checksumObject, ok := checksumFiles[getChecksumPath(key)]; ok {
 			toDelete = append(toDelete, s3.ObjectIdentifier{Key: checksumObject.Key, VersionID: checksumObject.VersionId})
 		}
 	}
 	for _, object := range orphanedChecksumFiles {
 		toDelete = append(toDelete, s3.ObjectIdentifier{Key: object.Key, VersionID: object.VersionId})
 	}
-	for _, object := range duplicateChecksumFiles {
+	for _, object := range duplicateFiles {
 		toDelete = append(toDelete, s3.ObjectIdentifier{Key: object.Key, VersionID: object.VersionId})
 	}
 

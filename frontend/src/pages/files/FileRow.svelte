@@ -19,11 +19,7 @@
     isInTrashBin: boolean;
     onRefresh: () => void;
     onOpenPath: (path: string) => void;
-    onDownloadFile: (
-      path: string,
-      versionID: string,
-      displayName: string,
-    ) => void;
+    onDownloadFile: (path: string, displayName: string) => void;
   } = $props();
 
   let isDeleting = $state(false);
@@ -90,7 +86,7 @@
           isLoading={isDeleting}
           onclick={() => {
             isDeleting = true;
-            DeleteFile(file.path, file.versionID)
+            DeleteFile(file.key)
               .then(() => {
                 toaster.create({
                   type: "success",
@@ -112,7 +108,7 @@
           isLoading={isDeleting}
           onclick={() => {
             isDeleting = true;
-            RestoreFile(file.path, file.versionID)
+            RestoreFile(file.key)
               .then(() => {
                 toaster.create({
                   type: "success",
@@ -134,7 +130,7 @@
       <Button
         disabled={isDeleting}
         onclick={() => {
-          onDownloadFile(file.path, file.versionID, file.displayName);
+          onDownloadFile(file.key, file.displayName);
           actionsDialog?.close();
         }}>Download</Button
       >

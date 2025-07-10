@@ -16,6 +16,27 @@ import (
 )
 
 func (c *Client) signV4(req *http.Request, body io.ReadSeeker) error {
+	var checksumSHA256 string
+	if body == nil {
+		checksumSHA256 = emptyStringSHA256
+	} else {
+		h := sha256.New()
+		if _, err := io.Copy(h, body); err != nil {
+			return err
+		}
+
+		// Reset the body reader so it can be read again
+		if _, err := body.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
+
+		checksumSHA256 = hex.EncodeToString(h.Sum(nil))
+	}
+
+	return c.signV4WithSum(req, checksumSHA256)
+}
+
+func (c *Client) signV4WithSum(req *http.Request, sha256Hash string) error {
 	parsedURL, err := url.Parse(req.URL.String())
 	if err != nil {
 		return err
@@ -29,23 +50,8 @@ func (c *Client) signV4(req *http.Request, body io.ReadSeeker) error {
 	// Set required headers
 	req.Header.Set("x-amz-date", amzDate)
 
-	// Calculate hash of request body
-	var bodyHash string
-	if body == nil {
-		bodyHash = emptyStringSHA256
-	} else {
-		h := sha256.New()
-		if _, err := io.Copy(h, body); err != nil {
-			return err
-		}
-		bodyHash = hex.EncodeToString(h.Sum(nil))
-
-		// Reset the body reader so it can be read again
-		if _, err := body.Seek(0, io.SeekStart); err != nil {
-			return err
-		}
-	}
-	req.Header.Set("x-amz-content-sha256", bodyHash)
+	// Set hash of request body
+	req.Header.Set("x-amz-content-sha256", sha256Hash)
 
 	// Create canonical URI
 	canonicalURI := parsedURL.Path
@@ -92,7 +98,7 @@ func (c *Client) signV4(req *http.Request, body io.ReadSeeker) error {
 		canonicalQueryString,
 		canonicalHeaders,
 		signedHeaders,
-		bodyHash)
+		sha256Hash)
 
 	// Create string to sign
 	algorithm := "AWS4-HMAC-SHA256"

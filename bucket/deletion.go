@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"hash/crc32"
 	"slices"
 	"strings"
 	"time"
@@ -12,61 +13,37 @@ import (
 	"github.com/bradenrayhorn/pickle/s3"
 )
 
-type keyVersionPair struct {
-	key     string
-	version string
-}
-
 type deletedFiles struct {
-	keyVersionPairs []keyVersionPair
+	keys []string
 }
 
-func (df *deletedFiles) isDeleted(key, versionID string) bool {
-	for _, pair := range df.keyVersionPairs {
-		if pair.key == key && pair.version == versionID {
-			return true
-		}
-	}
-	return false
+func (df *deletedFiles) isDeleted(key string) bool {
+	return slices.Contains(df.keys, key)
 }
 
-func (df *deletedFiles) append(key, versionID string) {
-	df.keyVersionPairs = append(df.keyVersionPairs, keyVersionPair{key, versionID})
+func (df *deletedFiles) append(key string) {
+	df.keys = append(df.keys, key)
 }
 
-func (df *deletedFiles) remove(key, versionID string) {
-	df.keyVersionPairs = slices.DeleteFunc(df.keyVersionPairs, func(pair keyVersionPair) bool {
-		return pair.key == key && pair.version == versionID
+func (df *deletedFiles) remove(key string) {
+	df.keys = slices.DeleteFunc(df.keys, func(k string) bool {
+		return k == key
 	})
 }
 
 func (df *deletedFiles) deserializeAndAddLine(line string) {
-	parts := strings.Split(strings.TrimSpace(line), "-")
-	if len(parts) != 2 {
-		return
-	}
-	key, err := base64.RawStdEncoding.DecodeString(parts[0])
-	if err != nil {
-		return
-	}
-	version, err := base64.RawStdEncoding.DecodeString(parts[1])
+	key, err := base64.RawStdEncoding.DecodeString(line)
 	if err != nil {
 		return
 	}
 
-	df.keyVersionPairs = append(df.keyVersionPairs, keyVersionPair{
-		key:     string(key),
-		version: string(version),
-	})
+	df.append(string(key))
 }
 
 func (df *deletedFiles) serialize() string {
 	lines := []string{}
-	for _, pair := range df.keyVersionPairs {
-		lines = append(lines, fmt.Sprintf("%s-%s",
-			base64.RawStdEncoding.EncodeToString([]byte(pair.key)),
-			base64.RawStdEncoding.EncodeToString([]byte(pair.version)),
-		))
+	for _, key := range df.keys {
+		lines = append(lines, base64.RawStdEncoding.EncodeToString([]byte(key)))
 	}
 	return strings.Join(lines, "\r\n")
 }
@@ -131,24 +108,24 @@ func (b *bucket) getDeletedFiles() (*deletedFiles, error) {
 	return b.cachedDeletedFiles, nil
 }
 
-func (b *bucket) DeleteFile(key, versionID string) error {
+func (b *bucket) DeleteFile(key string) error {
 	deletedFiles, err := b.getDeletedFiles()
 	if err != nil {
 		return err
 	}
 
-	deletedFiles.append(key, versionID)
+	deletedFiles.append(key)
 
 	return b.persistDeleteRegistry()
 }
 
-func (b *bucket) RestoreFile(key, versionID string) error {
+func (b *bucket) RestoreFile(key string) error {
 	deletedFiles, err := b.getDeletedFiles()
 	if err != nil {
 		return err
 	}
 
-	deletedFiles.remove(key, versionID)
+	deletedFiles.remove(key)
 
 	if err := b.persistDeleteRegistry(); err != nil {
 		return fmt.Errorf("persist delete registry: %w", err)
@@ -157,6 +134,11 @@ func (b *bucket) RestoreFile(key, versionID string) error {
 	retention := &s3.ObjectLockRetention{
 		Mode:  "COMPLIANCE",
 		Until: time.Now().Add(time.Hour * time.Duration(b.objectLockHours)),
+	}
+
+	versionID, err := b.getObjectVersionForKey(key)
+	if err != nil {
+		return err
 	}
 
 	if err := b.client.PutObjectRetention(key, versionID, retention); err != nil {
@@ -173,7 +155,12 @@ func (b *bucket) persistDeleteRegistry() error {
 
 	// upload new deleted registry
 	serialized := []byte(deletedFiles.serialize())
-	deleteResponse, err := b.client.PutObject(deletedFilesKey, bytes.NewReader(serialized), int64(len(serialized)), nil)
+	checksum := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	_, err = checksum.Write(serialized)
+	if err != nil {
+		return fmt.Errorf("write crc32 sum: %w", err)
+	}
+	deleteResponse, err := b.client.PutObject(deletedFilesKey, bytes.NewReader(serialized), int64(len(serialized)), checksum.Sum(nil), nil)
 	if err != nil {
 		return err
 	}
