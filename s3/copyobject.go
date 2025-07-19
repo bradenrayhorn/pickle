@@ -67,6 +67,8 @@ func (c *Client) StreamObjectTo(toKey, key, versionID string, from *Client, rete
 		req.Header.Set("x-amz-sdk-checksum-algorithm", "CRC32C")
 		req.Header.Set("x-amz-checksum-crc32c", resp.Header.Get("x-amz-checksum-crc32c"))
 
+		req.Header.Set("x-amz-meta-pickle-sha256", resp.Header.Get("x-amz-meta-pickle-sha256"))
+
 		// sign and send request
 		if err := c.signV4WithSum(req, "UNSIGNED-PAYLOAD"); err != nil {
 			return nil, err

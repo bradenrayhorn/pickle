@@ -97,17 +97,18 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 	fileID := ksuid.New()
 	keyName := cleanKeyName(targetPath + ".age." + fileID.String())
 
-	_, err = b.client.PutObject(keyName, archive, stat.Size(), crc32cSum, lockTime)
+	_, err = b.client.PutObject(keyName, archive, stat.Size(), crc32cSum, sha256Sum, lockTime)
 	if err != nil {
 		return fmt.Errorf("upload to s3: %w", err)
 	}
 
+	sha256SHA256Checksum := sha256.Sum256(sha256SumHex)
 	sha256CRC32Cchecksum := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 	_, err = sha256CRC32Cchecksum.Write(sha256SumHex)
 	if err != nil {
-		fmt.Errorf("crc32c checksum: %w", err)
+		return fmt.Errorf("crc32c checksum: %w", err)
 	}
-	_, err = b.client.PutObject(getChecksumPath(keyName), bytes.NewReader(sha256SumHex), int64(len(sha256SumHex)), sha256CRC32Cchecksum.Sum(nil), lockTime)
+	_, err = b.client.PutObject(getChecksumPath(keyName), bytes.NewReader(sha256SumHex), int64(len(sha256SumHex)), sha256CRC32Cchecksum.Sum(nil), sha256SHA256Checksum[:], lockTime)
 	if err != nil {
 		return fmt.Errorf("upload to s3: %w", err)
 	}

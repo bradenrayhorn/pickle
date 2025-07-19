@@ -3,6 +3,7 @@ package bucket
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"hash/crc32"
@@ -160,7 +161,9 @@ func (b *bucket) persistDeleteRegistry() error {
 	if err != nil {
 		return fmt.Errorf("write crc32 sum: %w", err)
 	}
-	deleteResponse, err := b.client.PutObject(deletedFilesKey, bytes.NewReader(serialized), int64(len(serialized)), checksum.Sum(nil), nil)
+	sha256Checksum := sha256.Sum256(serialized)
+
+	deleteResponse, err := b.client.PutObject(deletedFilesKey, bytes.NewReader(serialized), int64(len(serialized)), checksum.Sum(nil), sha256Checksum[:], nil)
 	if err != nil {
 		return err
 	}

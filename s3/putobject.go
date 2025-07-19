@@ -2,6 +2,7 @@ package s3
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +13,7 @@ type PutObjectResponse struct {
 	VersionID string
 }
 
-func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, crc32cChecksum []byte, retention *ObjectLockRetention) (*PutObjectResponse, error) {
+func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, crc32cChecksum []byte, sha256Checksum []byte, retention *ObjectLockRetention) (*PutObjectResponse, error) {
 	reqURL := c.buildURL(key, nil)
 
 	return withRetries(func() (*PutObjectResponse, error) {
@@ -41,8 +42,11 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, crc
 		req.Header.Set("x-amz-sdk-checksum-algorithm", "CRC32C")
 		req.Header.Set("x-amz-checksum-crc32c", base64.StdEncoding.EncodeToString(crc32cChecksum))
 
+		// add sha256 as metadata
+		req.Header.Set("x-amz-meta-pickle-sha256", hex.EncodeToString(sha256Checksum))
+
 		// sign and send request
-		if err := c.signV4(req, data); err != nil {
+		if err := c.signV4WithSum(req, hex.EncodeToString(sha256Checksum)); err != nil {
 			return nil, err
 		}
 		resp, err := c.httpClient.Do(req)

@@ -12,7 +12,7 @@ type ObjectMetadata struct {
 	Key       string
 	VersionID string
 
-	ChecksumSHA256            string
+	PickleSHA256              string
 	ObjectLockMode            string
 	ObjectLockRetainUntilDate time.Time
 }
@@ -67,11 +67,16 @@ func (c *Client) HeadObject(key string, versionId string) (*ObjectMetadata, erro
 			retainUntil = parsed
 		}
 
+		sha256 := resp.Header.Get("x-amz-meta-pickle-sha256")
+		if sha256 == "" {
+			return nil, fmt.Errorf("pickle-sha256 metadata missing from %s %s", key, versionId)
+		}
+
 		return &ObjectMetadata{
 			Key:       key,
 			VersionID: resp.Header.Get("x-amz-version-id"),
 
-			ChecksumSHA256:            resp.Header.Get("x-amz-checksum-sha256"),
+			PickleSHA256:              sha256,
 			ObjectLockMode:            resp.Header.Get("x-amz-object-lock-mode"),
 			ObjectLockRetainUntilDate: retainUntil,
 		}, nil

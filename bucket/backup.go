@@ -27,57 +27,74 @@ func BackupBucket(config *Config, targetConfig s3.Config) error {
 	}
 
 	// Reverse Versions so that oldest version is processed first.
-	// That is important so that objects are uploaded to Destination in same order as the Source.
 	slices.Reverse(objects.Versions)
 	slices.Reverse(targetObjects.Versions)
 
 	// Get only oldest version of each object
-	srcObjects := map[string]s3.VersionInfo{}
-	dstObjects := map[string]s3.VersionInfo{}
+	srcObjects := map[string]*s3.ObjectMetadata{}
+	dstObjects := map[string]*s3.ObjectMetadata{}
+
+	duplicateDstObjects := []*s3.ObjectMetadata{}
 
 	for _, object := range objects.Versions {
-		if !isChecksumFile(object.Key) && !isDataFile(object.Key) {
-			continue
+		meta, err := config.Client.HeadObject(object.Key, object.VersionId)
+		if err != nil {
+			return fmt.Errorf("get meta %s: %w", object.Key, err)
 		}
-		if _, ok := srcObjects[object.Key]; !ok {
-			srcObjects[object.Key] = object
+
+		if _, ok := srcObjects[meta.PickleSHA256]; !ok {
+			srcObjects[meta.PickleSHA256] = meta
 		}
 	}
 
 	for _, object := range targetObjects.Versions {
-		if !isChecksumFile(object.Key) && !isDataFile(object.Key) {
-			continue
+		meta, err := config.Client.HeadObject(object.Key, object.VersionId)
+		if err != nil {
+			return fmt.Errorf("get meta %s: %w", object.Key, err)
 		}
-		if _, ok := dstObjects[object.Key]; !ok {
-			dstObjects[object.Key] = object
+
+		if _, ok := dstObjects[meta.PickleSHA256]; !ok {
+			duplicateDstObjects = append(duplicateDstObjects, meta)
+		} else {
+			dstObjects[meta.PickleSHA256] = meta
 		}
 	}
 
-	toUpload := []s3.VersionInfo{}
-	toDelete := []s3.VersionInfo{}
+	toUpload := []*s3.ObjectMetadata{}
+	toDelete := []*s3.ObjectMetadata{}
 
 	// check for objects that are in src but not dst
 	for _, object := range srcObjects {
-		if _, ok := dstObjects[object.Key]; !ok {
+		if _, ok := dstObjects[object.PickleSHA256]; !ok {
 			toUpload = append(toUpload, object)
 		}
 	}
 
 	// check for objects that are in dst but not src
 	for _, object := range dstObjects {
-		if _, ok := srcObjects[object.Key]; ok {
-			err := target.PutObjectRetention(object.Key, object.VersionId, retention)
+		if srcMeta, ok := srcObjects[object.PickleSHA256]; ok && !srcMeta.ObjectLockRetainUntilDate.IsZero() {
+			// extend lock if object is also in src AND has object lock enabled in src
+			err := target.PutObjectRetention(object.Key, object.VersionID, &s3.ObjectLockRetention{
+				Mode:  "COMPLIANCE",
+				Until: srcMeta.ObjectLockRetainUntilDate,
+			})
 			if err != nil {
 				return fmt.Errorf("extend lock %s: %w", object.Key, err)
 			}
 		} else {
+			// otherwise delete it - the object is not in src
 			toDelete = append(toDelete, object)
 		}
 	}
 
+	// remove duplicates
+	for _, object := range duplicateDstObjects {
+		toDelete = append(toDelete, object)
+	}
+
 	// process uploads
 	for _, object := range toUpload {
-		err := target.StreamObjectTo(object.Key, object.Key, object.VersionId, config.Client, retention)
+		err := target.StreamObjectTo(object.Key, object.Key, object.VersionID, config.Client, retention)
 		if err != nil {
 			return fmt.Errorf("failed to copy object %s: %w", object.Key, err)
 		}
@@ -86,7 +103,7 @@ func BackupBucket(config *Config, targetConfig s3.Config) error {
 	// process deletes
 	toDeleteIdentifiers := []s3.ObjectIdentifier{}
 	for _, object := range toDelete {
-		toDeleteIdentifiers = append(toDeleteIdentifiers, s3.ObjectIdentifier{Key: object.Key, VersionID: object.VersionId})
+		toDeleteIdentifiers = append(toDeleteIdentifiers, s3.ObjectIdentifier{Key: object.Key, VersionID: object.VersionID})
 	}
 
 	if len(toDeleteIdentifiers) > 0 {
