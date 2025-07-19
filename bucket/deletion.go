@@ -161,6 +161,7 @@ func (b *bucket) persistDeleteRegistry() error {
 	if err != nil {
 		return fmt.Errorf("write crc32 sum: %w", err)
 	}
+
 	sha256Checksum := sha256.Sum256(serialized)
 
 	deleteResponse, err := b.client.PutObject(deletedFilesKey, bytes.NewReader(serialized), int64(len(serialized)), checksum.Sum(nil), sha256Checksum[:], nil)

@@ -1,14 +1,14 @@
 package s3
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 )
 
-func (c *Client) StreamObjectTo(toKey, key, versionID string, from *Client, retention *ObjectLockRetention) error {
+func (c *Client) StreamObjectTo(toKey, key, versionID string, from *Client) error {
 	_, err := withRetries(func() (*PutObjectResponse, error) {
 		// First get the object
 		getQuery := url.Values{}
@@ -46,8 +46,17 @@ func (c *Client) StreamObjectTo(toKey, key, versionID string, from *Client, rete
 			}
 		}
 
+		var toUpload io.Reader
+		if resp.ContentLength == 0 {
+			// Could not stream a nil body as Golang would add Transfer-Encoding header of "chunked"
+			// if ContentLength is 0. That header value is not supported by s3 servers.
+			toUpload = bytes.NewReader([]byte(""))
+		} else {
+			toUpload = resp.Body
+		}
+
 		// Now upload the object
-		req, err = http.NewRequest(http.MethodPut, c.buildURL(toKey, nil), resp.Body)
+		req, err = http.NewRequest(http.MethodPut, c.buildURL(toKey, nil), toUpload)
 		if err != nil {
 			return nil, err
 		}
@@ -55,9 +64,12 @@ func (c *Client) StreamObjectTo(toKey, key, versionID string, from *Client, rete
 		req.Header.Set("Content-Type", "application/octet-stream")
 		req.ContentLength = resp.ContentLength
 
-		if retention != nil {
-			req.Header.Set("x-amz-object-lock-mode", retention.Mode)
-			req.Header.Set("x-amz-object-lock-retain-until-date", retention.Until.Format(time.RFC3339))
+		retainUntil := resp.Header.Get("x-amz-object-lock-retain-until-date")
+		retainMode := resp.Header.Get("x-amz-object-lock-mode")
+
+		if retainUntil != "" && retainMode != "" {
+			req.Header.Set("x-amz-object-lock-mode", retainMode)
+			req.Header.Set("x-amz-object-lock-retain-until-date", retainUntil)
 		}
 
 		if c.storageClass != "" {
@@ -70,9 +82,10 @@ func (c *Client) StreamObjectTo(toKey, key, versionID string, from *Client, rete
 		req.Header.Set("x-amz-meta-pickle-sha256", resp.Header.Get("x-amz-meta-pickle-sha256"))
 
 		// sign and send request
-		if err := c.signV4WithSum(req, "UNSIGNED-PAYLOAD"); err != nil {
+		if err := c.signV4WithSum(req, resp.Header.Get("x-amz-meta-pickle-sha256")); err != nil {
 			return nil, err
 		}
+
 		resp, err = c.httpClient.Do(req)
 		if err != nil {
 			return nil, retriableError{err}
