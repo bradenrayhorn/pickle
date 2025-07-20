@@ -20,8 +20,6 @@ func (c *Client) GetObject(key string, versionId string) (io.ReadCloser, error) 
 			return nil, err
 		}
 
-		req.Header.Add("x-amz-checksum-mode", "ENABLED")
-
 		// sign and send request
 		if err := c.signV4(req, nil); err != nil {
 			return nil, err

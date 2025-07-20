@@ -28,7 +28,7 @@ type objectVersion struct {
 	Key          string      `xml:"Key"`
 	VersionId    string      `xml:"VersionId"`
 	IsLatest     bool        `xml:"IsLatest"`
-	LastModified time.Time   `xml:"LastModified"`
+	LastModified string      `xml:"LastModified"`
 	ETag         string      `xml:"ETag"`
 	Size         int64       `xml:"Size"`
 	StorageClass string      `xml:"StorageClass"`
@@ -39,7 +39,7 @@ type deleteMarker struct {
 	Key          string      `xml:"Key"`
 	VersionId    string      `xml:"VersionId"`
 	IsLatest     bool        `xml:"IsLatest"`
-	LastModified time.Time   `xml:"LastModified"`
+	LastModified string      `xml:"LastModified"`
 	Owner        objectOwner `xml:"Owner"`
 }
 
@@ -167,7 +167,7 @@ func (s *FakeS3) handleListObjectVersions(w http.ResponseWriter, r *http.Request
 				Key:          obj.Key,
 				VersionId:    obj.VersionID,
 				IsLatest:     v.isLatest,
-				LastModified: obj.LastModified,
+				LastModified: obj.LastModified.Format(time.RFC3339),
 				Owner:        objectOwner{ID: ownerID, DisplayName: ownerName},
 			})
 		} else {
@@ -175,7 +175,7 @@ func (s *FakeS3) handleListObjectVersions(w http.ResponseWriter, r *http.Request
 				Key:          obj.Key,
 				VersionId:    obj.VersionID,
 				IsLatest:     v.isLatest,
-				LastModified: obj.LastModified,
+				LastModified: obj.LastModified.Format(time.RFC3339),
 				ETag:         "",
 				Size:         int64(len(obj.Content)),
 				StorageClass: obj.StorageClass,

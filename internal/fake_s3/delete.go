@@ -15,8 +15,9 @@ type deleteVersionsResult struct {
 }
 
 type deletedObject struct {
-	Key       string `xml:"Key"`
-	VersionID string `xml:"VersionId,omitempty"`
+	Key                   string `xml:"Key,omitempty"`
+	VersionID             string `xml:"VersionId,omitempty"`
+	DeleteMarkerVersionID string `xml:"DeleteMarkerVersionId,omitempty"`
 }
 
 type deletedError struct {
@@ -92,8 +93,7 @@ func (s *FakeS3) handleDeleteObjects(w http.ResponseWriter, r *http.Request) {
 
 				if !deleteReq.Quiet {
 					result.Deleted = append(result.Deleted, deletedObject{
-						Key:       key,
-						VersionID: deleteMarker.VersionID,
+						DeleteMarkerVersionID: deleteMarker.VersionID,
 					})
 				}
 			}

@@ -2,7 +2,6 @@ package fakes3
 
 import (
 	"fmt"
-	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +24,10 @@ type ObjectVersion struct {
 	LastModified time.Time
 	StorageClass string
 	DeleteMarker bool
+	ChecksumType string
+	Checksum     string
 	Retention    *ObjectLockRetention
+	Meta         map[string]string
 }
 
 type ObjectLockRetention struct {
@@ -105,7 +107,7 @@ func (s *FakeS3) GetVersions(key string) []*ObjectVersion {
 
 func (s *FakeS3) generateVersionID() string {
 	s.nextVersionID++
-	return fmt.Sprintf("v%d", s.nextVersionID)
+	return fmt.Sprintf("%04d", s.nextVersionID)
 }
 
 // handleRequest handles incoming HTTP requests
@@ -135,8 +137,16 @@ func (s *FakeS3) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Dispatch based on the HTTP method and query parameters
 	switch r.Method {
+	case http.MethodHead:
+		if key != "" {
+			s.handleHeadObject(w, r, key)
+		} else {
+			http.Error(w, "Not Implmemented", http.StatusNotImplemented)
+		}
 	case http.MethodGet:
-		if _, ok := r.URL.Query()["versions"]; ok {
+		if key != "" {
+			s.handleGetObject(w, r, key)
+		} else if _, ok := r.URL.Query()["versions"]; ok {
 			s.handleListObjectVersions(w, r, bucket)
 		} else {
 			http.Error(w, "Not Implmemented", http.StatusNotImplemented)
@@ -156,52 +166,4 @@ func (s *FakeS3) handleRequest(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-// handlePutObject handles PUT object requests
-func (s *FakeS3) handlePutObject(w http.ResponseWriter, r *http.Request, key string) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading body: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	storageClass := "STANDARD"
-	if sc := r.Header.Get("x-amz-storage-class"); sc != "" {
-		storageClass = sc
-	}
-
-	obj := &ObjectVersion{
-		Key:          key,
-		Content:      body,
-		LastModified: s.now,
-		StorageClass: storageClass,
-	}
-
-	lockMode := r.Header.Get("x-amz-object-lock-mode")
-	lockDate := r.Header.Get("x-amz-object-lock-retain-until-date")
-	if lockMode != "" && lockDate != "" {
-		retainUntil, err := time.Parse(time.RFC3339, lockDate)
-		if err == nil {
-			obj.Retention = &ObjectLockRetention{
-				Mode:  lockMode,
-				Until: retainUntil,
-			}
-		}
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	versionID := s.generateVersionID()
-	obj.VersionID = versionID
-	w.Header().Set("x-amz-version-id", versionID)
-
-	if _, exists := s.objects[key]; !exists {
-		s.objects[key] = make(map[string]*ObjectVersion)
-	}
-
-	s.objects[key][versionID] = obj
-
-	w.WriteHeader(http.StatusOK)
 }
