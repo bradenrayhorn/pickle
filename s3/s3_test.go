@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"hash/crc32"
 	"io"
 	"net/http"
@@ -582,6 +583,38 @@ func TestHeadObjectDoesRetries(t *testing.T) {
 	})
 	_, err = client.HeadObject("my-file.txt", v1.VersionID)
 	assert.ErrContains(t, err, "retries exceeded")
+}
+
+func TestListAllObjects(t *testing.T) {
+	sv := fakes3.NewFakeS3("my-bucket")
+	now := time.Now().UTC()
+	sv.SetNow(now)
+
+	sv.StartServer()
+	t.Cleanup(func() { sv.StopServer() })
+	url := sv.GetEndpoint()
+
+	client := s3.NewClient(s3.Config{
+		URL:       url,
+		Region:    "my-region",
+		KeyID:     "keyid",
+		KeySecret: "shh",
+		Bucket:    "my-bucket",
+		Insecure:  true,
+	})
+
+	// upload many objects
+	for i := 0; i < 5000; i++ {
+		data := []byte("abc")
+		crc32c, sha256 := getChecksums(data)
+		_, err := client.PutObject(fmt.Sprintf("%d-my-file.txt", i), bytes.NewReader(data), 3, crc32c, sha256, nil)
+		assert.NoErr(t, err)
+	}
+
+	// try to list all
+	res, err := client.ListAllObjectVersions("")
+	assert.NoErr(t, err)
+	assert.Equal(t, len(res.Versions), 5000)
 }
 
 func TestCopyObject(t *testing.T) {
