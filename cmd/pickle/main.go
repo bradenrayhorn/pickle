@@ -25,7 +25,7 @@ func main() {
 	case "maintain":
 		maintainCmd.Parse(os.Args[2:])
 
-		config, err := loadConfig()
+		config, _, err := loadConfig()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -45,14 +45,14 @@ func main() {
 	case "backup":
 		backupCmd.Parse(os.Args[2:])
 
-		config, err := loadConfig()
+		_, s3config, err := loadConfig()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 		backupTargetConfig := loadBackupTargetConfig()
 
-		if err := bucket.BackupBucket(config, backupTargetConfig); err != nil {
+		if err := bucket.BackupBucket(s3config, backupTargetConfig); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -64,23 +64,25 @@ func main() {
 	}
 }
 
-func loadConfig() (*bucket.Config, error) {
+func loadConfig() (*bucket.Config, s3.Config, error) {
 	conn, err := connection.FromString(os.Getenv("PICKLE_CONNECTION_CONFIG"))
 	if err != nil {
-		return nil, err
+		return nil, s3.Config{}, err
+	}
+
+	s3config := s3.Config{
+		URL:          conn.URL,
+		Region:       conn.Region,
+		Bucket:       conn.Bucket,
+		KeyID:        conn.KeyID,
+		KeySecret:    conn.KeySecret,
+		StorageClass: conn.StorageClass,
 	}
 
 	return &bucket.Config{
-		Client: s3.NewClient(s3.Config{
-			URL:          conn.URL,
-			Region:       conn.Region,
-			Bucket:       conn.Bucket,
-			KeyID:        conn.KeyID,
-			KeySecret:    conn.KeySecret,
-			StorageClass: conn.StorageClass,
-		}),
+		Client:          s3.NewClient(s3config),
 		ObjectLockHours: conn.ObjectLockHours,
-	}, nil
+	}, s3config, nil
 }
 
 func loadBackupTargetConfig() s3.Config {

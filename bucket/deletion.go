@@ -53,7 +53,7 @@ var (
 	deletedFilesKey = "_pickle/deleted"
 )
 
-func (b *bucket) refreshDeletedFiles() error {
+func (b *Bucket) refreshDeletedFiles() error {
 	versions, err := b.getObjectVersions()
 	if err != nil {
 		return err
@@ -98,7 +98,7 @@ func (b *bucket) refreshDeletedFiles() error {
 	}
 }
 
-func (b *bucket) getDeletedFiles() (*deletedFiles, error) {
+func (b *Bucket) getDeletedFiles() (*deletedFiles, error) {
 	if b.cachedDeletedFiles == nil {
 		if err := b.refreshDeletedFiles(); err != nil {
 			return nil, err
@@ -109,7 +109,7 @@ func (b *bucket) getDeletedFiles() (*deletedFiles, error) {
 	return b.cachedDeletedFiles, nil
 }
 
-func (b *bucket) DeleteFile(key string) error {
+func (b *Bucket) DeleteFile(key string) error {
 	deletedFiles, err := b.getDeletedFiles()
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (b *bucket) DeleteFile(key string) error {
 	return b.persistDeleteRegistry()
 }
 
-func (b *bucket) RestoreFile(key string) error {
+func (b *Bucket) RestoreFile(key string) error {
 	deletedFiles, err := b.getDeletedFiles()
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (b *bucket) RestoreFile(key string) error {
 
 	retention := &s3.ObjectLockRetention{
 		Mode:  "COMPLIANCE",
-		Until: time.Now().Add(time.Hour * time.Duration(b.objectLockHours)),
+		Until: b.now().Add(time.Hour * time.Duration(b.objectLockHours)),
 	}
 
 	versionID, err := b.getObjectVersionForKey(key)
@@ -148,7 +148,7 @@ func (b *bucket) RestoreFile(key string) error {
 	return nil
 }
 
-func (b *bucket) persistDeleteRegistry() error {
+func (b *Bucket) persistDeleteRegistry() error {
 	deletedFiles, err := b.getDeletedFiles()
 	if err != nil {
 		return err

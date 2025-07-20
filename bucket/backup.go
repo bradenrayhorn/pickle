@@ -9,12 +9,13 @@ import (
 	"github.com/bradenrayhorn/pickle/s3"
 )
 
-func BackupBucket(config *Config, targetConfig s3.Config) error {
+func BackupBucket(sourceConfig s3.Config, targetConfig s3.Config) error {
+	source := s3.NewClient(sourceConfig)
 	target := s3.NewClient(targetConfig)
 
 	slog.Info("running pickle backup...")
 
-	objects, err := config.Client.ListAllObjectVersions("")
+	objects, err := source.ListAllObjectVersions("")
 	if err != nil {
 		return fmt.Errorf("get bucket objects: %w", err)
 	}
@@ -35,13 +36,13 @@ func BackupBucket(config *Config, targetConfig s3.Config) error {
 	duplicateDstObjects := []*s3.ObjectMetadata{}
 
 	for _, object := range objects.Versions {
-		meta, err := config.Client.HeadObject(object.Key, object.VersionId)
+		meta, err := source.HeadObject(object.Key, object.VersionId)
 		if err != nil {
 			return fmt.Errorf("get meta [src] %s: %w", object.Key, err)
 		}
 
-		if _, ok := srcObjects[meta.PickleSHA256]; !ok {
-			srcObjects[meta.PickleSHA256] = meta
+		if _, ok := srcObjects[meta.PickleID]; !ok {
+			srcObjects[meta.PickleID] = meta
 		}
 	}
 
@@ -51,8 +52,8 @@ func BackupBucket(config *Config, targetConfig s3.Config) error {
 			return fmt.Errorf("get meta [dst] %s: %w", object.Key, err)
 		}
 
-		if _, ok := dstObjects[meta.PickleSHA256]; !ok {
-			dstObjects[meta.PickleSHA256] = meta
+		if _, ok := dstObjects[meta.PickleID]; !ok {
+			dstObjects[meta.PickleID] = meta
 		} else {
 			duplicateDstObjects = append(duplicateDstObjects, meta)
 			slog.Info(fmt.Sprintf("will delete duplicate object in dst at %s", object.Key), "versionID", meta.VersionID)
@@ -64,7 +65,7 @@ func BackupBucket(config *Config, targetConfig s3.Config) error {
 
 	// check for objects that are in src but not dst
 	for _, object := range srcObjects {
-		if _, ok := dstObjects[object.PickleSHA256]; !ok {
+		if _, ok := dstObjects[object.PickleID]; !ok {
 			toUpload = append(toUpload, object)
 			slog.Info(fmt.Sprintf("will upload %s to dst", object.Key))
 		}
@@ -72,7 +73,7 @@ func BackupBucket(config *Config, targetConfig s3.Config) error {
 
 	// check for objects that are in dst but not src
 	for _, object := range dstObjects {
-		if srcMeta, ok := srcObjects[object.PickleSHA256]; ok {
+		if srcMeta, ok := srcObjects[object.PickleID]; ok {
 			// extend lock if object is also in src AND has object lock enabled in src
 			if !srcMeta.ObjectLockRetainUntilDate.IsZero() && srcMeta.ObjectLockRetainUntilDate.After(object.ObjectLockRetainUntilDate) {
 				slog.Info(fmt.Sprintf("extending lock of %s in dst until %s", object.Key, srcMeta.ObjectLockRetainUntilDate.Format(time.RFC1123)), "versionID", object.VersionID)
@@ -100,7 +101,7 @@ func BackupBucket(config *Config, targetConfig s3.Config) error {
 	// process uploads
 	for _, object := range toUpload {
 		slog.Info(fmt.Sprintf("streaming %s to dst", object.Key))
-		err := target.StreamObjectTo(object.Key, object.Key, object.VersionID, config.Client)
+		err := target.StreamObjectTo(object.Key, object.Key, object.VersionID, source)
 		if err != nil {
 			return fmt.Errorf("failed to copy object %s: %w", object.Key, err)
 		}

@@ -27,7 +27,8 @@ func (s *FakeS3) handlePutObjectRetention(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if retentionReq.RetainUntilDate.Before(s.now) {
+	retainUntil := retentionReq.RetainUntilDate.Truncate(time.Second)
+	if retainUntil.Before(s.now.Truncate(time.Second)) {
 		http.Error(w, "RetainUntil must be after now", http.StatusBadRequest)
 		return
 	}
@@ -66,6 +67,6 @@ func (s *FakeS3) handlePutObjectRetention(w http.ResponseWriter, r *http.Request
 
 	obj.Retention = &ObjectLockRetention{
 		Mode:  retentionReq.Mode,
-		Until: retentionReq.RetainUntilDate,
+		Until: retainUntil,
 	}
 }

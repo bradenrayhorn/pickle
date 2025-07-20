@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/segmentio/ksuid"
 )
 
 type PutObjectResponse struct {
@@ -42,8 +44,9 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, crc
 		req.Header.Set("x-amz-sdk-checksum-algorithm", "CRC32C")
 		req.Header.Set("x-amz-checksum-crc32c", base64.StdEncoding.EncodeToString(crc32cChecksum))
 
-		// add sha256 as metadata
+		// add pickle metadata
 		req.Header.Set("x-amz-meta-pickle-sha256", hex.EncodeToString(sha256Checksum))
+		req.Header.Set("x-amz-meta-pickle-id", ksuid.New().String())
 
 		// sign and send request
 		if err := c.signV4WithSum(req, hex.EncodeToString(sha256Checksum)); err != nil {

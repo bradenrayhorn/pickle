@@ -2,12 +2,13 @@ package bucket
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/bradenrayhorn/pickle/s3"
 )
 
-func (b *bucket) getObjectVersions() (*s3.ListAllObjectVersionsResult, error) {
+func (b *Bucket) getObjectVersions() (*s3.ListAllObjectVersionsResult, error) {
 	if b.cachedObjectVersions != nil {
 		return b.cachedObjectVersions, nil
 	}
@@ -20,7 +21,7 @@ func (b *bucket) getObjectVersions() (*s3.ListAllObjectVersionsResult, error) {
 	return b.cachedObjectVersions, nil
 }
 
-func (b *bucket) GetFiles() ([]BucketFile, error) {
+func (b *Bucket) GetFiles() ([]BucketFile, error) {
 	result, err := b.client.ListAllObjectVersions("")
 	if err != nil {
 		return nil, fmt.Errorf("get files: %w", err)
@@ -39,7 +40,7 @@ func (b *bucket) GetFiles() ([]BucketFile, error) {
 	}), nil
 }
 
-func (b *bucket) GetTrashedFiles() ([]BucketFile, error) {
+func (b *Bucket) GetTrashedFiles() ([]BucketFile, error) {
 	result, err := b.client.ListAllObjectVersions("")
 	if err != nil {
 		return nil, fmt.Errorf("get files: %w", err)
@@ -108,16 +109,24 @@ func versionsToBucketFiles(versions []s3.VersionInfo, filter func(version s3.Ver
 		})
 	}
 
+	slices.SortFunc(files, func(a, b BucketFile) int {
+		keyCmp := strings.Compare(a.Key, b.Key)
+		if keyCmp == 0 {
+			return strings.Compare(a.VersionID, b.VersionID)
+		}
+		return keyCmp
+	})
+
 	return files
 }
 
-func (b *bucket) getObjectVersionForKey(key string) (string, error) {
+func (b *Bucket) getObjectVersionForKey(key string) (string, error) {
 	versions, err := b.getObjectVersions()
 	if err != nil {
 		return "", err
 	}
 
-	// versions is sorted newest to oldest
+	// versions are sorted newest to oldest
 	var versionID string
 	for _, object := range versions.Versions {
 		if object.Key == key {

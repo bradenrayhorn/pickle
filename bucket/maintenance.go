@@ -10,7 +10,7 @@ import (
 	"github.com/bradenrayhorn/pickle/s3"
 )
 
-func (b *bucket) RunMaintenance() error {
+func (b *Bucket) RunMaintenance() error {
 	slog.Info("starting maintenance...")
 
 	versionResult, err := b.getObjectVersions()
@@ -69,16 +69,19 @@ func (b *bucket) RunMaintenance() error {
 	orphanedChecksumFiles := potentiallyOrphanedChecksumFiles
 
 	// 0. Remove any permanently deleted files from registry
-	hasChangedDeleteRegistry := false
-	for _, key := range deletedFiles.keys {
+	toRemoveFromDeleteRegistry := []string{}
+	for key := range slices.Values(deletedFiles.keys) {
 		if _, ok := dataFiles[key]; !ok {
 			slog.Info(fmt.Sprintf("%s in registry is now removed from bucket, removing from registry", key))
-			deletedFiles.remove(key)
-			hasChangedDeleteRegistry = true
+			toRemoveFromDeleteRegistry = append(toRemoveFromDeleteRegistry, key)
 		}
 	}
-	if hasChangedDeleteRegistry {
+	if len(toRemoveFromDeleteRegistry) > 0 {
 		slog.Info("persisting new delete registry")
+		for key := range slices.Values(toRemoveFromDeleteRegistry) {
+			deletedFiles.remove(key)
+		}
+
 		if err := b.persistDeleteRegistry(); err != nil {
 			return fmt.Errorf("persist delete registry: %w", err)
 		}
@@ -87,7 +90,7 @@ func (b *bucket) RunMaintenance() error {
 	// 1. Extend object lock for all active files currently in system.
 	retention := &s3.ObjectLockRetention{
 		Mode:  "COMPLIANCE",
-		Until: time.Now().Add(time.Hour * time.Duration(b.objectLockHours)),
+		Until: b.now().Add(time.Hour * time.Duration(b.objectLockHours)),
 	}
 	retentionErrors := []error{}
 	for _, object := range dataFilesToExtend {
@@ -140,7 +143,10 @@ func (b *bucket) RunMaintenance() error {
 		}
 	}
 
+	slog.Info("refreshing file list...")
+	_, refreshFilesError := b.GetFiles()
+
 	slog.Info("maintenance complete")
 
-	return errors.Join(retentionError, deleteError)
+	return errors.Join(retentionError, deleteError, refreshFilesError)
 }

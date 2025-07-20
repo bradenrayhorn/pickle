@@ -105,6 +105,38 @@ func (s *FakeS3) GetVersions(key string) []*ObjectVersion {
 	return []*ObjectVersion{}
 }
 
+func (s *FakeS3) GetByVersionID(versionID string) *ObjectVersion {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, versions := range s.objects {
+		for _, version := range versions {
+			if version.VersionID == versionID {
+				return version
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *FakeS3) GetVersionIDByFuzzyKey(keyContains string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for key, versions := range s.objects {
+		if strings.Contains(key, keyContains) {
+			if len(versions) == 1 {
+				return slices.Collect(maps.Values(versions))[0].VersionID
+			} else {
+				panic("too many versions at " + key)
+			}
+		}
+	}
+
+	panic("no key containing " + keyContains)
+}
+
 func (s *FakeS3) generateVersionID() string {
 	s.nextVersionID++
 	return fmt.Sprintf("%04d", s.nextVersionID)

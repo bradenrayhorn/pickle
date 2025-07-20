@@ -17,7 +17,7 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
-func (b *bucket) UploadFile(diskPath string, targetPath string) error {
+func (b *Bucket) UploadFile(diskPath string, targetPath string) error {
 	if b.key == nil {
 		return fmt.Errorf("key is not configured")
 	}
@@ -91,7 +91,7 @@ func (b *bucket) UploadFile(diskPath string, targetPath string) error {
 
 	lockTime := &s3.ObjectLockRetention{
 		Mode:  "COMPLIANCE",
-		Until: time.Now().Add(time.Hour * time.Duration(b.objectLockHours)),
+		Until: b.now().Add(time.Hour * time.Duration(b.objectLockHours)),
 	}
 
 	fileID := ksuid.New()

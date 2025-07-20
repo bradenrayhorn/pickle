@@ -2,10 +2,8 @@ package s3_test
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"hash/crc32"
 	"io"
 	"net/http"
 	"testing"
@@ -15,17 +13,6 @@ import (
 	"github.com/bradenrayhorn/pickle/internal/testutils/assert"
 	"github.com/bradenrayhorn/pickle/s3"
 )
-
-func getChecksums(data []byte) ([]byte, []byte) {
-	sha256 := sha256.Sum256(data)
-	crc32c := crc32.New(crc32.MakeTable(crc32.Castagnoli))
-	_, err := crc32c.Write(data)
-	if err != nil {
-		panic(err)
-	}
-
-	return crc32c.Sum(nil), sha256[:]
-}
 
 func TestCanPutAndListObjects(t *testing.T) {
 	sv := fakes3.NewFakeS3("my-bucket")
@@ -48,7 +35,7 @@ func TestCanPutAndListObjects(t *testing.T) {
 
 	// try uploading a file
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
 	assert.NoErr(t, err)
 
@@ -90,7 +77,7 @@ func TestDeletion(t *testing.T) {
 
 	// put a file
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
 	assert.NoErr(t, err)
 
@@ -172,7 +159,7 @@ func TestMultipleVersions(t *testing.T) {
 
 	// put a file twice
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
 	assert.NoErr(t, err)
 	v2, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
@@ -226,7 +213,7 @@ func TestObjectRetention(t *testing.T) {
 
 	// put a file
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	version, err := client.PutObject("my-file.txt", bytes.NewReader([]byte("abc")), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -264,7 +251,7 @@ func TestObjectPutRetention(t *testing.T) {
 
 	// put a file
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	version, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
 	assert.NoErr(t, err)
 
@@ -300,7 +287,7 @@ func TestObjectRetentionWithDeletionMarker(t *testing.T) {
 
 	// put a file
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	_, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -389,7 +376,7 @@ func TestGetObject(t *testing.T) {
 
 	// upload an object
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -424,7 +411,7 @@ func TestGetObjectDoesRetries(t *testing.T) {
 
 	// upload an object
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -483,7 +470,7 @@ func TestPutObjectDoesRetries(t *testing.T) {
 
 	// try uploading a file
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	_, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
 	assert.NoErr(t, err)
 
@@ -521,7 +508,7 @@ func TestHeadObject(t *testing.T) {
 
 	// upload an object
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -529,9 +516,11 @@ func TestHeadObject(t *testing.T) {
 	res, err := client.HeadObject("my-file.txt", v1.VersionID)
 	assert.NoErr(t, err)
 
+	assert.NotEqual(t, "", res.PickleID)
 	assert.Equal(t, s3.ObjectMetadata{
 		Key:                       "my-file.txt",
 		VersionID:                 v1.VersionID,
+		PickleID:                  res.PickleID,
 		PickleSHA256:              hex.EncodeToString(sha256),
 		ObjectLockMode:            "COMPLIANCE",
 		ObjectLockRetainUntilDate: now.Add(time.Hour).Truncate(time.Second),
@@ -558,7 +547,7 @@ func TestHeadObjectDoesRetries(t *testing.T) {
 
 	// upload an object
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -606,7 +595,7 @@ func TestListAllObjects(t *testing.T) {
 	// upload many objects
 	for i := 0; i < 5000; i++ {
 		data := []byte("abc")
-		crc32c, sha256 := getChecksums(data)
+		crc32c, sha256 := fakes3.GetChecksums(data)
 		_, err := client.PutObject(fmt.Sprintf("%d-my-file.txt", i), bytes.NewReader(data), 3, crc32c, sha256, nil)
 		assert.NoErr(t, err)
 	}
@@ -647,7 +636,7 @@ func TestCopyObject(t *testing.T) {
 
 	// upload an object to src
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := srcClient.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -665,9 +654,11 @@ func TestCopyObject(t *testing.T) {
 	assert.NoErr(t, err)
 
 	assert.Equal(t, "abc", string(getBody))
+	assert.NotEqual(t, "", res.PickleID)
 	assert.Equal(t, s3.ObjectMetadata{
 		Key:                       "my-file.txt",
 		VersionID:                 v1.VersionID,
+		PickleID:                  res.PickleID,
 		PickleSHA256:              hex.EncodeToString(sha256),
 		ObjectLockMode:            "COMPLIANCE",
 		ObjectLockRetainUntilDate: now.Add(time.Hour).Truncate(time.Second),
@@ -704,7 +695,7 @@ func TestCopyObjectDoesRetries(t *testing.T) {
 
 	// upload an object to src
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	v1, err := srcClient.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, &s3.ObjectLockRetention{Mode: "COMPLIANCE", Until: now.Add(time.Hour)})
 	assert.NoErr(t, err)
 
@@ -794,7 +785,7 @@ func TestDeleteObjectsDoesRetries(t *testing.T) {
 	})
 
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	_, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
 	assert.NoErr(t, err)
 
@@ -845,7 +836,7 @@ func TestPutObjectRetentionDoesRetries(t *testing.T) {
 	})
 
 	data := []byte("abc")
-	crc32c, sha256 := getChecksums(data)
+	crc32c, sha256 := fakes3.GetChecksums(data)
 	version, err := client.PutObject("my-file.txt", bytes.NewReader(data), 3, crc32c, sha256, nil)
 	assert.NoErr(t, err)
 

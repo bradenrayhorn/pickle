@@ -53,6 +53,7 @@ func (s *FakeS3) handleListObjectVersions(w http.ResponseWriter, r *http.Request
 	defer s.mu.RUnlock()
 
 	// Parse query parameters
+	prefix := r.URL.Query().Get("prefix")
 	keyMarker := r.URL.Query().Get("key-marker")
 	versionIdMarker := r.URL.Query().Get("version-id-marker")
 	maxKeysStr := r.URL.Query().Get("max-keys")
@@ -81,6 +82,10 @@ func (s *FakeS3) handleListObjectVersions(w http.ResponseWriter, r *http.Request
 
 	// First, determine the latest version for each key
 	for key, versions := range s.objects {
+		if prefix != "" && !strings.HasPrefix(key, prefix) {
+			continue
+		}
+
 		var latest *ObjectVersion
 		var latestTime time.Time
 
