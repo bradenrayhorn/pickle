@@ -22,7 +22,9 @@
 <Button
   icon
   onclick={() => {
-    SelectFile()
+    const forcedUploadPath = window.__dev_pickle_forced_upload_path ?? ""; // only for e2e tests
+
+    (forcedUploadPath ? Promise.resolve(forcedUploadPath) : SelectFile())
       .then((path) => {
         if (path !== "") {
           pendingFilePath = path;

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -69,6 +70,7 @@ func (a *App) InitializeConnection(connectionString string) error {
 			KeyID:        conn.KeyID,
 			KeySecret:    conn.KeySecret,
 			StorageClass: conn.StorageClass,
+			Insecure:     os.Getenv("PICKLE_INSECURE_S3") != "",
 		}),
 		Key:             key,
 		ObjectLockHours: conn.ObjectLockHours,
@@ -124,7 +126,7 @@ func (a *App) UploadFile(diskPath string, targetPath string) error {
 	return b.UploadFile(diskPath, targetPath)
 }
 
-func (a *App) DownloadFile(key, downloadID string) error {
+func (a *App) DownloadFile(key, downloadID, toPath string) error {
 	b, err := bucket.New(a.bucket)
 	if err != nil {
 		return err
@@ -137,11 +139,17 @@ func (a *App) DownloadFile(key, downloadID string) error {
 		defaultName = strings.Join(keyFileNameParts[:len(keyFileNameParts)-2], ".")
 	}
 
-	diskPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: defaultName,
-	})
-	if err != nil {
-		return fmt.Errorf("select path for save: %w", err)
+	var diskPath string
+	if toPath == "" {
+		selectedPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+			DefaultFilename: defaultName,
+		})
+		if err != nil {
+			return fmt.Errorf("select path for save: %w", err)
+		}
+		diskPath = selectedPath
+	} else {
+		diskPath = toPath
 	}
 
 	// Ignore if no file is chosen

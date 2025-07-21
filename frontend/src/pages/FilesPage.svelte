@@ -90,7 +90,11 @@
       const downloadID = btoa(String.fromCharCode(...bytes));
 
       downloadNameMap[downloadID] = displayName;
-      DownloadFile(key, downloadID)
+      DownloadFile(
+        key,
+        downloadID,
+        window.__dev_pickle_forced_download_path ?? "", // only for e2e tests
+      )
         .catch((error) => {
           toaster.remove(downloadID);
           onError(error);

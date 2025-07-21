@@ -3,9 +3,8 @@ package fakes3
 import (
 	"fmt"
 	"maps"
+	"net"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -37,11 +36,13 @@ type ObjectLockRetention struct {
 
 type FakeS3 struct {
 	mu            sync.RWMutex
-	server        *httptest.Server
+	server        *http.Server
 	bucket        string
 	objects       map[string]map[string]*ObjectVersion // map[key]map[versionID]*ObjectVersion
 	nextVersionID int
 	now           time.Time
+
+	boundHost string
 
 	interceptor func(r *http.Request, w http.ResponseWriter) bool
 }
@@ -55,7 +56,25 @@ func NewFakeS3(bucket string) *FakeS3 {
 }
 
 func (s *FakeS3) StartServer() {
-	s.server = httptest.NewServer(http.HandlerFunc(s.handleRequest))
+	s.StartServerWithHostPort("", "")
+}
+
+func (s *FakeS3) StartServerWithHostPort(host, port string) {
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == "" {
+		port = "0"
+	}
+	ln, err := net.Listen("tcp", host+":"+port)
+	if err != nil {
+		panic("could not bind address" + host + ":" + port)
+	}
+	s.boundHost = ln.Addr().String()
+
+	s.server = &http.Server{Handler: http.HandlerFunc(s.handleRequest)}
+
+	go func() { _ = s.server.Serve(ln) }()
 }
 
 func (s *FakeS3) StopServer() {
@@ -74,11 +93,7 @@ func (s *FakeS3) SetInterceptor(i func(r *http.Request, w http.ResponseWriter) b
 }
 
 func (s *FakeS3) GetEndpoint() string {
-	if s.server == nil {
-		return ""
-	}
-	u, _ := url.Parse(s.server.URL)
-	return u.Host
+	return s.boundHost
 }
 
 func (s *FakeS3) Reset() {
@@ -144,6 +159,11 @@ func (s *FakeS3) generateVersionID() string {
 
 // handleRequest handles incoming HTTP requests
 func (s *FakeS3) handleRequest(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Has("probe") {
+		_, _ = w.Write([]byte("ok"))
+		return
+	}
+
 	// Parse the bucket and key from the URL path
 	// Path format: /{bucket}/{key}
 	parts := strings.SplitN(r.URL.Path, "/", 3)
