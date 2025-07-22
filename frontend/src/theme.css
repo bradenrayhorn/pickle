@@ -22,6 +22,7 @@
   --z-banner: 10;
 
   /* Colors */
+  --color-alpha-25: rgba(255, 255, 255, 0.02);
   --color-alpha-50: rgba(255, 255, 255, 0.04);
   --color-alpha-100: rgba(255, 255, 255, 0.06);
   --color-alpha-200: rgba(255, 255, 255, 0.08);

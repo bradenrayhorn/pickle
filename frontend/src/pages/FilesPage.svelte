@@ -36,6 +36,8 @@
         title: downloadNameMap[downloadID] ?? "?? File ??",
         description: `Download complete!`,
       });
+
+      delete downloadNameMap[downloadID];
     }),
   ];
   onDestroy(() => {
@@ -94,14 +96,11 @@
         key,
         downloadID,
         window.__dev_pickle_forced_download_path ?? "", // only for e2e tests
-      )
-        .catch((error) => {
-          toaster.remove(downloadID);
-          onError(error);
-        })
-        .finally(() => {
-          delete downloadNameMap[downloadID];
-        });
+      ).catch((error) => {
+        toaster.remove(downloadID);
+        onError(error);
+        delete downloadNameMap[downloadID];
+      });
     }}
   />
 </div>

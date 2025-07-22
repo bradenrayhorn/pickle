@@ -12,6 +12,7 @@
   "devDependencies": {
     "@playwright/test": "^1.54.1",
     "@types/node": "^24.0.15",
+    "dayjs": "^1.11.13",
     "get-port": "^7.1.0",
     "prettier": "^3.6.2"
   }

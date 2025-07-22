@@ -30,41 +30,45 @@
   let actionsDialog: HTMLDialogElement | undefined = $state(undefined);
 </script>
 
-<li>
-  <button
-    title={file.displayName}
-    class:isDirectory={file.type === "directory"}
-    onclick={() => {
-      if (file.type === "directory" || file.hasMultipleVersions) {
-        onOpenPath(file.path);
-      } else if (file.type === "file") {
-        actionsDialog?.showModal();
-      }
-    }}
-  >
-    <div class="icon">
-      {#if file.type === "directory"}
-        <IconDirectory
-          font-size="var(--text-lg)"
-          color="var(--color-bg-primary-muted)"
-        />
-      {:else if file.hasMultipleVersions}
-        <IconFileMultiple
-          font-size="var(--text-lg)"
-          color="var(--color-alpha-800)"
-        />
-      {:else}
-        <IconFile font-size="var(--text-lg)" color="var(--color-alpha-800)" />
-      {/if}
-    </div>
-
-    <div class="name">{file.displayName}</div>
-    {#if file.type === "file"}
-      <div class="date">{dayjs(file.lastModified).format("lll")}</div>
-      <div class="size">{file.size}</div>
+<tr
+  title={file.displayName}
+  class:isDirectory={file.type === "directory"}
+  onclick={() => {
+    if (file.type === "directory" || file.hasMultipleVersions) {
+      onOpenPath(file.path);
+    } else if (file.type === "file") {
+      actionsDialog?.showModal();
+    }
+  }}
+>
+  <td class="icon">
+    {#if file.type === "directory"}
+      <IconDirectory
+        font-size="var(--text-lg)"
+        color="var(--color-bg-primary-muted)"
+        aria-label="Directory"
+      />
+    {:else if file.hasMultipleVersions}
+      <IconFileMultiple
+        font-size="var(--text-lg)"
+        color="var(--color-alpha-800)"
+        aria-label="Multiple files"
+      />
+    {:else}
+      <IconFile
+        font-size="var(--text-lg)"
+        color="var(--color-alpha-800)"
+        aria-label="File"
+      />
     {/if}
-  </button>
-</li>
+  </td>
+
+  <td class="name">{file.displayName}</td>
+  {#if file.type === "file"}
+    <td class="date">{dayjs(file.lastModified).format("lll")}</td>
+    <td class="size">{file.size}</td>
+  {/if}
+</tr>
 
 {#if file.type === "file"}
   <dialog bind:this={actionsDialog} closedby={isDeleting ? "none" : "any"}>
@@ -139,10 +143,13 @@
 {/if}
 
 <style>
-  li {
+  tr {
     width: 100%;
 
-    &:nth-child(odd) {
+    &:nth-of-type(odd) {
+      background-color: var(--color-alpha-25);
+    }
+    &:nth-of-type(even) {
       background-color: var(--color-alpha-50);
     }
     &:hover {
@@ -153,7 +160,7 @@
     transition-timing-function: linear;
     transition-duration: 50ms;
 
-    button {
+    & {
       width: 100%;
       padding-inline: calc(var(--spacing) * 4);
       padding-block: calc(var(--spacing) * 2);

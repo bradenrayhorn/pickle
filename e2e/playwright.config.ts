@@ -5,15 +5,16 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1, // there is only 1 instance of the app open at a time
   reporter: process.env.CI ? 'html' : 'list',
+  timeout: 10000,
+  globalTimeout: 30000,
 
   use: {
     baseURL: 'http://localhost:34115',
-    trace: 'on-first-retry',
   },
 
   projects: [
@@ -31,9 +32,10 @@ export default defineConfig({
     {
       command: 'cd .. && PICKLE_INSECURE_S3=yes wails dev',
       url: 'http://127.0.0.1:34115',
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 1000 },
       reuseExistingServer: !process.env.CI,
-      stdout: 'pipe',
-      timeout: 60000,
+      stdout: 'ignore',
+      stderr: 'ignore',
     },
   ],
 });

@@ -25,20 +25,22 @@
 </script>
 
 <nav>
-  <div class="path">
-    <div class="breadcrumbs">
+  <nav class="path">
+    <ol class="breadcrumbs" aria-label="Current path">
       {#each parts as part, i (part + i)}
-        <button
-          title={`${part}/`}
-          onclick={() => {
-            onOpenPath(parts.slice(1, i + 1).join("/"));
-          }}
-        >
-          {`${part}/`}
-        </button>
+        <li>
+          <button
+            title={`${part}/`}
+            onclick={() => {
+              onOpenPath(parts.slice(1, i + 1).join("/"));
+            }}
+          >
+            {`${part}/`}
+          </button>
+        </li>
       {/each}
-    </div>
-  </div>
+    </ol>
+  </nav>
 
   <div class="actions">
     {#if isInTrashBin}
@@ -49,7 +51,12 @@
         </div>
       </Button>
     {:else}
-      <Button icon variant="secondary" onclick={onOpenTrashBin}>
+      <Button
+        icon
+        variant="secondary"
+        onclick={onOpenTrashBin}
+        aria-label="Trash bin"
+      >
         <IconTrashBin font-size="var(--text-lg)" />
       </Button>
 
