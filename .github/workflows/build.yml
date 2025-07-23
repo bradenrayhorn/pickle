@@ -22,18 +22,19 @@ jobs:
         run: ./install-wails.sh
 
       - name: Build App
-        env:
-          BUILD_OPTIONS: ${{ steps.build_options.outputs.BUILD_OPTIONS }}
-        working-directory: ${{ inputs.app-working-directory }}
         run: wails build -platform darwin/arm64
 
       - name: Add macOS perms
-        if: runner.os == 'macOS'
         run: chmod +x build/bin/*/Contents/MacOS/*
 
       - name: Codesign
-        if: runner.os == 'macOS'
         run: codesign --force -s - build/bin/pickle.app
+
+      - name: Create DMG
+        run: |
+          cd build/bin
+          hdiutil create -volname "Pickle" -srcfolder pickle.app -ov -format UDZO pickle-macos-arm64.dmg
+          rm -rf pickle.app
 
       - uses: actions/upload-artifact@v4
         with:
@@ -90,14 +91,14 @@ jobs:
           name: windows-amd64
           path: .
 
-      - name: Compress pickle.app
-        run: zip -r ./build/bin/pickle.app.zip ./build/bin/pickle.app
-
-      - name: Check build
-        run: ls -lahR ./build
+      - name: Compress pickle
+        run: |
+          ls -lahR ./build
+          cd ./build/bin
+          zip -r pickle-windows-amd64.zip pickle.exe && rm -rf pickle.exe
 
       - name: Create release
-        run: gh release create -d --generate-notes ${{ steps.get_tag.outputs.tag }} ./build/bin/pickle.app.zip ./build/bin/pickle.exe
+        run: gh release create -d --generate-notes ${{ steps.get_tag.outputs.tag }} ./build/bin/*
         env:
            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
