@@ -91,7 +91,7 @@ func (c *Client) StreamObjectTo(toKey, key, versionID string, from *Client) erro
 		if err != nil {
 			return nil, retriableError{err}
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
 			body, _ := io.ReadAll(resp.Body)

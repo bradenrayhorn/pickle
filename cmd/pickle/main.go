@@ -23,7 +23,11 @@ func main() {
 	// Parse the command
 	switch os.Args[1] {
 	case "maintain":
-		maintainCmd.Parse(os.Args[2:])
+		err := maintainCmd.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		config, _, err := loadConfig()
 		if err != nil {
@@ -43,7 +47,11 @@ func main() {
 		}
 		return
 	case "backup":
-		backupCmd.Parse(os.Args[2:])
+		err := backupCmd.Parse(os.Args[2:])
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		_, s3config, err := loadConfig()
 		if err != nil {

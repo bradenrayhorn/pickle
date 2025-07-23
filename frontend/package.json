@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+    "lint": "prettier --check . && eslint .",
+    "check": "./ts-ignore-wailsjs.sh && svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
   "devDependencies": {
+    "@eslint/js": "^9.31.0",
     "@iconify-json/mdi": "^1.2.3",
     "@sveltejs/vite-plugin-svelte": "^5.1.0",
     "@tsconfig/svelte": "^5.0.4",
@@ -18,20 +20,18 @@
     "@zag-js/svelte": "^1.18.2",
     "@zag-js/toast": "^1.18.2",
     "dayjs": "^1.11.13",
-    "eslint": "^9.10.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-svelte": "^2.45.1",
+    "eslint": "9.28.0",
+    "eslint-config-prettier": "10.1.5",
+    "eslint-plugin-svelte": "3.9.1",
+    "globals": "^16.3.0",
     "path": "^0.12.7",
     "prettier": "^3.3.3",
-    "prettier-plugin-svelte": "^3.2.6",
+    "prettier-plugin-svelte": "^3.4.0",
     "svelte": "^5.34.7",
     "svelte-check": "^4.2.2",
-    "typescript": "~5.8.3",
-    "typescript-eslint": "^8.5.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "^8.33.0",
     "unplugin-icons": "^22.1.0",
     "vite": "^6.0.0"
-  },
-  "dependencies": {
-    "-": "^0.0.1"
   }
 }

@@ -10,8 +10,6 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1, // there is only 1 instance of the app open at a time
   reporter: process.env.CI ? 'html' : 'list',
-  timeout: 10000,
-  globalTimeout: 30000,
 
   use: {
     baseURL: 'http://localhost:34115',
@@ -34,8 +32,9 @@ export default defineConfig({
       url: 'http://127.0.0.1:34115',
       gracefulShutdown: { signal: 'SIGTERM', timeout: 1000 },
       reuseExistingServer: !process.env.CI,
-      stdout: 'ignore',
-      stderr: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
+      timeout: 300000,
     },
   ],
 });

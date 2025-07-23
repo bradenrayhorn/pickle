@@ -30,7 +30,7 @@
           pendingFilePath = path;
 
           const prefix = currentPath.length > 1 ? `${currentPath}/` : "";
-          pendingFileName = prefix + path.replace(/^.*[\\\/]/, "");
+          pendingFileName = prefix + path.replace(/^.*[\\/]/, "");
 
           uploadDialog?.showModal();
         }
