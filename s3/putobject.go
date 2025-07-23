@@ -56,7 +56,7 @@ func (c *Client) PutObject(key string, data io.ReadSeeker, dataLength int64, crc
 		if err != nil {
 			return nil, retriableError{err}
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
 			body, _ := io.ReadAll(resp.Body)

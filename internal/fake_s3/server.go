@@ -79,7 +79,7 @@ func (s *FakeS3) StartServerWithHostPort(host, port string) {
 
 func (s *FakeS3) StopServer() {
 	if s.server != nil {
-		s.server.Close()
+		_ = s.server.Close()
 		s.server = nil
 	}
 }

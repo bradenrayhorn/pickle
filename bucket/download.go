@@ -82,7 +82,7 @@ func (b *Bucket) DownloadFile(bucketKey string, diskPath string) error {
 		hex.Encode(actualSum, summedHash)
 
 		if !bytes.Equal(expectedSum, actualSum) {
-			return fmt.Errorf("file may have been corrupted. checksums do not match.")
+			return fmt.Errorf("file may have been corrupted. checksums do not match")
 		}
 	}
 

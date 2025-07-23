@@ -94,9 +94,7 @@ func BackupBucket(sourceConfig s3.Config, targetConfig s3.Config) error {
 	}
 
 	// remove duplicates
-	for _, object := range duplicateDstObjects {
-		toDelete = append(toDelete, object)
-	}
+	toDelete = append(toDelete, duplicateDstObjects...)
 
 	// process uploads
 	for _, object := range toUpload {
