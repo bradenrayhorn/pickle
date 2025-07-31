@@ -95,5 +95,5 @@ func TestDownloadVerifiesChecksum(t *testing.T) {
 	// download the file
 	downloadPath := path.Join(test.workingDir, "out.txt")
 	err = test.bucket.DownloadFile(upload.Key, downloadPath)
-	assert.ErrContains(t, err, "checksums do not match.")
+	assert.ErrContains(t, err, "checksums do not match")
 }
