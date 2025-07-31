@@ -3,6 +3,7 @@ package s3
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"testing"
 	"time"
@@ -39,6 +40,8 @@ func withRetries[T any](do func() (T, error)) (T, error) {
 		if !errors.As(err, &retriable) {
 			return result, err
 		}
+
+		slog.Warn("encountered error, retrying operation", "error", err)
 
 		backoff := time.Duration(100 * (1 << i))
 		jitter := time.Duration(rand.Int64N(int64(100)))
