@@ -1,6 +1,6 @@
 module github.com/bradenrayhorn/pickle
 
-go 1.23
+go 1.24.4
 
 require (
 	filippo.io/age v1.2.1
