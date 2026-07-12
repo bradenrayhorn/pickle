@@ -15,7 +15,7 @@
     "@iconify-json/mdi": "1.2.3",
     "@sveltejs/vite-plugin-svelte": "5.1.0",
     "@tsconfig/svelte": "5.0.4",
-    "@types/node": "22.16.0",
+    "@types/node": "24.13.2",
     "@zag-js/menu": "1.18.2",
     "@zag-js/svelte": "1.18.2",
     "@zag-js/toast": "1.18.2",
